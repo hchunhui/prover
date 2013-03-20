@@ -4,7 +4,8 @@
 struct list
 {
 	struct list *next;
-	struct list *f1, *f2;
+	struct list *f1;
+	struct list *f2;
 	int seq;
 	unsigned long long cp, cn;
 };

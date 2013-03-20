@@ -169,16 +169,6 @@ struct list *proof_dist(struct etree *p)
 	etree_dump_prefix(t, stderr);
 	fprintf(stderr, "\n");
 	list = cons_clause(t);
-	for(pl = list, i = 1; pl; pl = pl->next, i++)
-	{
-		printf("Definition _L%d:=(fun (H0:", i);
-		etree_dump_infix(p, stdout);
-		printf(") =>\n");
-		__proof_dist(p, 0, 1, pl);
-		printf(").\nCheck (_L%d).\n", i);
-		pl->seq = i;
-	}
-//	etree_destroy(t);
 	return list;
 }
 
@@ -217,9 +207,13 @@ static int first_bit(unsigned long long x)
 	return i;
 }
 
-void define_hypothesis(struct list *p, int orig_seq)
+void define_hypothesis(struct list *p, struct etree *et)
 {
-	printf("Definition L%d := (_L%d L0').\n", p->seq, orig_seq);
+	printf("Definition L%d:=((fun (H0:", p->seq);
+	etree_dump_infix(et, stdout);
+	printf(") =>\n");
+	__proof_dist(et, 0, 1, p);
+	printf(") L0').\nCheck (L%d).\n", p->seq);
 }
 
 void define_theorem(struct list *p)
@@ -255,14 +249,14 @@ void define_theorem(struct list *p)
 	}
 }
 
-void clause_show(struct list *p, int orig_seq)
+void clause_show(struct list *p, struct etree *et)
 {
-	int is_hypothesis = !(p->f1 && p->f2);
+	int is_hypothesis = !(p->f1);
 	printf("(* [%3d] ", p->seq);
 	if(is_hypothesis)
 	{
 		printf("   hypothesis *)\n");
-		define_hypothesis(p, orig_seq);
+		define_hypothesis(p, et);
 	}
 	else
 	{
@@ -270,6 +264,21 @@ void clause_show(struct list *p, int orig_seq)
 		define_theorem(p);
 	}
 	printf("\n");
+}
+
+int proof_prove(struct list *g, struct etree *et, int seq)
+{
+	int orig_seq;
+	if(g->f1)
+	{
+		if(g->f1->seq == 0)
+			seq = proof_prove(g->f1, et, seq);
+		if(g->f2->seq == 0)
+			seq = proof_prove(g->f2, et, seq);
+	}
+	g->seq = seq;
+	clause_show(g, et);
+	return seq+1;
 }
 
 int prove(struct etree *et)
@@ -307,9 +316,8 @@ int prove(struct etree *et)
 				list_free(ir);
 				continue;
 			}
-			orig_seq = ir->seq;
-			ir->seq = seq++;
-			clause_show(ir, orig_seq);
+			fprintf(stderr, "search [%d]\r", seq++);
+			fflush(stderr);
 			for(it = base->next; it; it = it->next)
 			{
 				x1 = (it->cp & ir->cn);
@@ -336,11 +344,8 @@ int prove(struct etree *et)
 				p->f2 = ir;
 				if(p->cp == 0 && p->cn == 0)
 				{
-					orig_seq = p->seq;
-					p->seq = seq++;
-					clause_show(p, orig_seq);
 					printf("(* yes *)\n");
-					return p->seq;
+					return proof_prove(p, et, 1)-1;
 				}
 				p->next = pend;
 				pend = p;

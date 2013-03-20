@@ -193,26 +193,7 @@ void resolve(
 	printf("H1");
 	printf(")\n");
 }
-/*
-int main(int argc, char *argv[])
-{
-	int vec1[] = {2, 8, -7};
-	int vec2[] = {2, -8, -5};
-	int vec1p[] = {2, -7};
-	int vec2p[] = {2, -5};
-	int n1, n2, n1p, n2p;
-	n1 = 3;
-	n2 = 3;
-	n1p = 2;
-	n2p = 2;
-	resolve(vec1, n1,
-		vec2, n2,
-		vec1p, n1p,
-		vec2p, n2p,
-		8);
-	return 0;
-}
-*/
+
 int bit2vec(unsigned long long cp, unsigned long long cn, int *vec)
 {
 	int i, r;
