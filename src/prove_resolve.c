@@ -14,9 +14,6 @@ int bit2vec(unsigned long long cp, unsigned long long cn, int *vec);
 
 char prop_name[64][16];
 
-/*
- * 第三步：求析取范式各析取支
- */
 static struct etree *simp_dist1(struct etree *t1, struct etree *t2)
 {
 	struct etree *t;
@@ -26,7 +23,6 @@ static struct etree *simp_dist1(struct etree *t1, struct etree *t2)
 				 0,
 				 simp_dist1(t1->l, t2),
 				 simp_dist1(t1->r, t2));
-//		free(t1);
 	}
 	else if(t2->type == T_AND)
 	{
@@ -34,7 +30,6 @@ static struct etree *simp_dist1(struct etree *t1, struct etree *t2)
 				 0,
 				 simp_dist1(t1, t2->l),
 				 simp_dist1(t1, t2->r));
-//		free(t2);
 	}
 	else
 	{
@@ -100,19 +95,6 @@ static struct list *cons_clause(struct etree *p)
 	}
 }
 
-static int __proof_genor(struct etree *p, struct list *goal, int hc)
-{
-	int vec1[128], vec2[128], vec[128];
-	int n1, n2, n;
-	int rank[128];
-	n1 = bit2vec(goal->cp, goal->cn, vec1);
-	vec2[0] = p->val;
-	n2 = 1;
-	n = or_merge(vec1, n1, vec2, n2, rank, vec);
-	or_intro(rank[p->val>0?p->val-1:(63-p->val)], vec, n, hc);
-	return 1;
-}
-
 static int __goal_include(struct etree *p, struct list *goal)
 {
 	switch(p->type)
@@ -133,6 +115,9 @@ static int __goal_include(struct etree *p, struct list *goal)
 static int __proof_dist(struct etree *p, int from, int hc, struct list *goal)
 {
 	int thc;
+	int vec1[128], vec2[1], vec[128];
+	int n1, n2, n;
+	int rank[128];
 	switch(p->type)
 	{
 	case T_AND:
@@ -165,10 +150,11 @@ static int __proof_dist(struct etree *p, int from, int hc, struct list *goal)
 		printf("H%d)\n", from);
 		break;
 	case T_PROP:
-		if(!__proof_genor(p, goal, from)) {
-			fprintf(stderr, "bad\n");
-			exit(1);
-		}
+		n1 = bit2vec(goal->cp, goal->cn, vec1);
+		vec2[0] = p->val;
+		n2 = 1;
+		n = or_merge(vec1, n1, vec2, n2, rank, vec);
+		or_intro(rank[p->val>0?p->val-1:(63-p->val)], vec, n, from);
 		break;
 	}
 	return hc;
@@ -202,86 +188,69 @@ int max(int a, int b)
 	return a>b?a:b;
 }
 
-void define_clause(struct list *p)
+static int bit_count4(unsigned int n) 
+{ 
+    n = (n & 0x55555555) + ((n >> 1) & 0x55555555) ; 
+    n = (n & 0x33333333) + ((n >> 2) & 0x33333333) ; 
+    n = (n & 0x0f0f0f0f) + ((n >> 4) & 0x0f0f0f0f) ; 
+    n = (n & 0x00ff00ff) + ((n >> 8) & 0x00ff00ff) ; 
+    n = (n & 0x0000ffff) + ((n >> 16) & 0x0000ffff) ; 
+
+    return n ; 
+}
+
+static int bit_count(unsigned long long x)
 {
-	int i;
-	unsigned long long x;
-	int flag = 0;
-	if((p->cp | p->cn) == 0)
-	{
-		printf("False");
-		return;
-	}
-	x = p->cp;
-	for(i = 0; i < 64; i++)
-	{
-		if(x & 1)
-		{
-			printf(" %s %s", flag?"\\/":"", prop_name[i]);
-			flag = 1;
+	return bit_count4(x&0xffffffff)+bit_count4(x>>32);
+}
+
+static int first_bit(unsigned long long x)
+{
+	unsigned long long mask = 0xffffffffull;
+	int shift = 32;
+	int i = 0;
+	for(;shift;shift >>= 1, mask >>= shift)
+		if((x&mask) == 0) {
+			i += shift;
+			x >>= shift;
 		}
-		x = x >> 1;
-	}
-	x = p->cn;
-	for(i = 0; i < 64; i++)
-	{
-		if(x & 1)
-		{
-			printf(" %s ~%s", flag?"\\/":"", prop_name[i]);
-			flag = 1;
-		}
-		x = x >> 1;
-	}
+	return i;
 }
 
 void define_hypothesis(struct list *p, int orig_seq)
 {
-#if 0
-	printf("Hypothesis L%d:", p->seq);
-	define_clause(p);
-	printf(".\n");
-#else
 	printf("Definition L%d := (_L%d L0').\n", p->seq, orig_seq);
-#endif
-}
-
-int calc_resolve_var(struct list *f1, struct list *f2)
-{
-	unsigned long long x;
-	int i;
-	x = (f1->cp & f2->cn) | (f1->cn & f2->cp);
-	for(i = 0; i < 64; i++)
-	{
-		if (x & 1)
-			return i;
-		x>>=1;
-	}
 }
 
 void define_theorem(struct list *p)
 {
+	int vec[128];
+	int vec1[128], vec2[128];
+	int vec1p[128], vec2p[128];
+	int n, n1, n2, n1p, n2p;
+	unsigned long long x1, x2, x;
 	int rvar;
-	int vec1[128];
-	int vec2[128];
-	int vec1p[128];
-	int vec2p[128];
-	int n1, n2, n1p, n2p;
-	rvar = calc_resolve_var(p->f1, p->f2);
-	printf("Lemma L%d:", p->seq);
-	define_clause(p);
-	printf(".\nProof (\n");
+	x1 = p->f1->cp & p->f2->cn;
+	x2 = p->f1->cn & p->f2->cp;
+	x = x1 | x2;
+	rvar = first_bit(x) + 1;
+	n = bit2vec(p->cp, p->cn, vec);
 	n1 = bit2vec(p->f1->cp, p->f1->cn, vec1);
 	n2 = bit2vec(p->f2->cp, p->f2->cn, vec2);
-	n1p = bit2vec(p->f1->cp & (~(1<<rvar)), p->f1->cn & (~(1<<rvar)), vec1p);
-	n2p = bit2vec(p->f2->cp & (~(1<<rvar)), p->f2->cn & (~(1<<rvar)), vec2p);
-	if(p->f1->cp & (1<<rvar))
+	n1p = bit2vec(p->f1->cp & (~x1), p->f1->cn & (~x2), vec1p);
+	n2p = bit2vec(p->f2->cp & (~x2), p->f2->cn & (~x1), vec2p);
+
+	printf("Lemma L%d:", p->seq);
+	print_vec(vec, n);
+	printf(".\nProof (\n");
+	if(p->f1->cp & x)
 	{
-		resolve(vec1, n1, vec2, n2, vec1p, n1p, vec2p, n2p, rvar+1);
+		resolve(vec1, n1, vec2, n2, vec1p, n1p, vec2p, n2p, rvar);
 		printf("L%d L%d).\n", p->f1->seq, p->f2->seq);
 	}
 	else
 	{
-		resolve(vec2, n2, vec1, n1, vec2p, n2p, vec1p, n1p, rvar+1);
+		resolve(vec2, n2, vec1, n1, vec2p, n2p, vec1p, n1p, rvar);
 		printf("L%d L%d).\n", p->f2->seq, p->f1->seq);
 	}
 }
@@ -290,7 +259,6 @@ void clause_show(struct list *p, int orig_seq)
 {
 	int is_hypothesis = !(p->f1 && p->f2);
 	printf("(* [%3d] ", p->seq);
-//	define_clause(p);
 	if(is_hypothesis)
 	{
 		printf("   hypothesis *)\n");
@@ -302,22 +270,6 @@ void clause_show(struct list *p, int orig_seq)
 		define_theorem(p);
 	}
 	printf("\n");
-}
-
-int bit_count4(unsigned int n) 
-{ 
-    n = (n & 0x55555555) + ((n >> 1) & 0x55555555) ; 
-    n = (n & 0x33333333) + ((n >> 2) & 0x33333333) ; 
-    n = (n & 0x0f0f0f0f) + ((n >> 4) & 0x0f0f0f0f) ; 
-    n = (n & 0x00ff00ff) + ((n >> 8) & 0x00ff00ff) ; 
-    n = (n & 0x0000ffff) + ((n >> 16) & 0x0000ffff) ; 
-
-    return n ; 
-}
-
-int bit_count(unsigned long long x)
-{
-	return bit_count4(x&0xffffffff)+bit_count4(x>>32);
 }
 
 int prove(struct etree *et)
@@ -363,7 +315,6 @@ int prove(struct etree *et)
 				x1 = (it->cp & ir->cn);
 				x2 = (it->cn & ir->cp);
 				x = x1 | x2;
-/*				x = (it->cp & ir->cn) | (it->cn & ir->cp);*/
 				if(x == 0 || x&(x-1))
 					continue;
 				p = list_new();
