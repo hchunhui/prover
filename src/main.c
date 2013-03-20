@@ -31,16 +31,16 @@ int main(int argc, char *argv[])
 	if(et == NULL)
 		exit(1);
 	et = etree_mknode(T_NOT, 0, et, NULL);
-	dump(et);
+	etree_dump_prefix(et, stderr);
 	fprintf(stderr, "\n");
 	printf("Hypothesis L0: ");
-	dump_prop(et);
+	etree_dump_infix(et, stdout);
 	printf(".\n");
 	proof_impl(et);
-	dump(et);
+	etree_dump_prefix(et, stderr);
 	fprintf(stderr, "\n");
 	proof_not(et);
-	dump(et);
+	etree_dump_prefix(et, stderr);
 	fprintf(stderr, "\n");
 	clauses = proof_dist(et);
 	seq = prove(clauses);

@@ -223,8 +223,6 @@ void proof_not(struct etree *p)
 	__proof_not1(p, 0);
 	printf(").\nCheck (insert_not1).\n");
 	simp_not1(p, 0);
-	dump(p);
-	fprintf(stderr,"\n");
 	printf("Definition insert_not2:=(");
 	__proof_not2(p, 0);
 	printf(").\nCheck (insert_not2).\n");
@@ -359,9 +357,9 @@ static int __proof_dist(struct etree *p, int from, int hc, struct list *goal)
 	case T_AND:
 		thc = hc;
 		printf("(and_ind (fun (H%d:", hc++);
-		dump_prop(p->l);
+		etree_dump_infix(p->l, stdout);
 		printf(") (H%d:", hc++);
-		dump_prop(p->r);
+		etree_dump_infix(p->r, stdout);
 		printf(") => (");
 		if(__goal_include(p->l, goal))
 			hc = __proof_dist(p->l, thc, hc, goal);
@@ -373,13 +371,13 @@ static int __proof_dist(struct etree *p, int from, int hc, struct list *goal)
 		thc = hc;
 		printf("(or_ind\n");
 		printf("(fun (H%d:", hc++);
-		dump_prop(p->l);
+		etree_dump_infix(p->l, stdout);
 		printf(") => (");
 		hc = __proof_dist(p->l, thc, hc, goal);
 		printf("))\n");
 		thc = hc;
 		printf("(fun (H%d:", hc++);
-		dump_prop(p->r);
+		etree_dump_infix(p->r, stdout);
 		printf(") => (");
 		hc = __proof_dist(p->r, thc, hc, goal);
 		printf("))\n");
@@ -401,13 +399,13 @@ struct list *proof_dist(struct etree *p)
 	struct list *list, *pl;
 	int i;
 	t = simp_dist(p);
-	dump(t);
+	etree_dump_prefix(t, stderr);
 	fprintf(stderr, "\n");
 	list = cons_clause(t);
 	for(pl = list, i = 1; pl; pl = pl->next, i++)
 	{
 		printf("Definition _L%d:=(fun (H0:", i);
-		dump_prop(p);
+		etree_dump_infix(p, stdout);
 		printf(") =>\n");
 		__proof_dist(p, 0, 1, pl);
 		printf(").\nCheck (_L%d).\n", i);

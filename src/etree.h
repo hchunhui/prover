@@ -41,6 +41,6 @@ static void etree_destroy(struct etree *p)
 	free(p);
 }
 
-void dump_prop(struct etree *p);
-void dump(struct etree *p);
+void etree_dump_infix(struct etree *p, FILE *fp);
+void etree_dump_prefix(struct etree *p, FILE *fp);
 #endif /* _ETREE_H_ */
