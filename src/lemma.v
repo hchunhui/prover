@@ -1,9 +1,5 @@
 Require Import Classical.
 
-Lemma imp_p: forall P:Prop, P<->P.
-tauto.
-Qed.
-
 Lemma imp_or: forall P Q:Prop, (P->Q)<->(~P\/Q).
 unfold iff.
 split.
@@ -34,6 +30,9 @@ exact (NNPP P).
 tauto.
 Qed.
 
+Lemma iff_p: forall P:Prop, P<->P.
+tauto.
+Qed.
 
 Lemma iff_trans: forall P Q R:Prop, (P<->Q)->(Q<->R)->(P<->R).
 tauto.

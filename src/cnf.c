@@ -64,7 +64,7 @@ static void __proof_imp(struct etree *p)
 		printf("))");
 		break;
 	case T_PROP:
-		printf("(imp_p A%d)", p->val);
+		printf("(iff_p A%d)", p->val);
 		break;
 	}
 }
@@ -168,7 +168,7 @@ static void __proof_not1(struct etree *p, int not)
 		}
 		break;
 	case T_PROP:
-		printf("(imp_p A%d)", p->val);
+		printf("(iff_p A%d)", p->val);
 		break;
 	}
 }
@@ -209,7 +209,7 @@ static void __proof_not2(struct etree *p, int not)
 		if(not) {
 			printf("(L_not _ _ (");
 		}
-		printf("(imp_p A%d)", p->val);
+		printf("(iff_p A%d)", p->val);
 		if(not) {
 			printf("))");
 		}
