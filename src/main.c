@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "list.h"
 #include "etree.h"
-#include "cnf.h"
+#include "nnf.h"
 
 struct etree *parse();
 extern char prop_name[][16];
@@ -13,8 +12,6 @@ int main(int argc, char *argv[])
 	int i;
 	int seq;
 	struct etree *et;
-	struct list *clauses = NULL;
-
 	for(i = 0; i < 64; i++)
 	{
 		sprintf(prop_name[i], "A%d", i+1);
@@ -42,8 +39,7 @@ int main(int argc, char *argv[])
 	proof_not(et);
 	etree_dump_prefix(et, stderr);
 	fprintf(stderr, "\n");
-	clauses = proof_dist(et);
-	seq = prove(clauses);
+	seq = prove(et);
 	printf("End prove0.\n");
 	if(seq)
 		printf("Definition Lem:=(NNPP _ L%d).\n", seq);
