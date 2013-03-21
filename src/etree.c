@@ -1,6 +1,15 @@
 #include <stdio.h>
 #include <string.h>
 #include "etree.h"
+#include "proof.h"
+
+static void print_lit(int val, FILE *fp)
+{
+	if(val < 0)
+		fprintf(fp, "~%s", prop_name[-val-1]);
+	else
+		fprintf(fp, "%s", prop_name[val-1]);
+}
 
 void etree_dump_infix(struct etree *p, FILE *fp)
 {
@@ -26,10 +35,7 @@ void etree_dump_infix(struct etree *p, FILE *fp)
 		fprintf(fp, ")");
 		break;
 	case T_PROP:
-		if(p->val < 0)
-			fprintf(fp, "~A%d", -p->val);
-		else
-			fprintf(fp, "A%d", p->val);
+		print_lit(p->val, fp);
 		break;
 	case T_NOT:
 		fprintf(fp, "~(");
@@ -60,10 +66,7 @@ void etree_dump_prefix(struct etree *p, FILE *fp)
 		fprintf(fp,")");
 		break;
 	case T_PROP:
-		if(p->val < 0)
-			fprintf(fp, "~A%d", -p->val);
-		else
-			fprintf(fp, "A%d", p->val);
+		print_lit(p->val, fp);
 		break;
 	case T_NOT:
 		fprintf(fp,"(not ");

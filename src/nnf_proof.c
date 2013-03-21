@@ -5,6 +5,11 @@
 #include "etree.h"
 #include "proof.h"
 
+static void print_iffp(int val)
+{
+	fprintf(pout, "(iff_p %s)", prop_name[val-1]);
+}
+
 /*
  * 第一步：消除蕴含词
  */
@@ -39,7 +44,7 @@ static void __proof_imp(struct etree *p)
 		fprintf(pout, "))");
 		break;
 	case T_PROP:
-		fprintf(pout, "(iff_p A%d)", p->val);
+		print_iffp(p->val);
 		break;
 	}
 }
@@ -85,7 +90,7 @@ static void __proof_not1(struct etree *p, int not)
 		}
 		break;
 	case T_PROP:
-		fprintf(pout, "(iff_p A%d)", p->val);
+		print_iffp(p->val);
 		break;
 	}
 }
@@ -126,7 +131,7 @@ static void __proof_not2(struct etree *p, int not)
 		if(not) {
 			fprintf(pout, "(L_not _ _ (");
 		}
-		fprintf(pout, "(iff_p A%d)", p->val);
+		print_iffp(p->val);
 		if(not) {
 			fprintf(pout, "))");
 		}
