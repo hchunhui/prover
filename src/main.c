@@ -45,13 +45,13 @@ int main(int argc, char *argv[])
 
 	/* 否定范式 */
 	proof_not1(et);
-	simp_not1(et, 0);
+	simp_not1(et);
 	proof_not2(et);
+	simp_not2(et);
 	printf("Definition L0':= "
 	       "(iff_imp _ _ "
 	       "(iff_trans _ _ _ elim_impl (iff_trans _ _ _ insert_not1 insert_not2)) "
 	       "L0).\n");
-	simp_not2(et, 0);
 
 	etree_dump_prefix(et, stderr);
 	fprintf(stderr, "\n");

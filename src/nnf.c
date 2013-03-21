@@ -34,13 +34,13 @@ void simp_impl(struct etree *p)
 /*
  * 第二步：否定词深入
  */
-void simp_not1(struct etree *p, int not)
+static void __simp_not1(struct etree *p, int not)
 {
 	struct etree *t;
 	switch(p->type)
 	{
 	case T_NOT:
-		simp_not1(p->l, !not);
+		__simp_not1(p->l, !not);
 		break;
 	case T_OR:
 		if(not)
@@ -62,13 +62,18 @@ void simp_not1(struct etree *p, int not)
 			t = etree_mknode(T_NOT, 0, p->r, NULL);
 			p->r = t;
 		}
-		simp_not1(p->l, 0);
-		simp_not1(p->r, 0);
+		__simp_not1(p->l, 0);
+		__simp_not1(p->r, 0);
 		break;
 	}
 }
 
-void simp_not2(struct etree *p, int not)
+void simp_not1(struct etree *p)
+{
+	__simp_not1(p, 0);
+}
+
+static void __simp_not2(struct etree *p, int not)
 {
 	struct etree *t;
 	switch(p->type)
@@ -77,16 +82,21 @@ void simp_not2(struct etree *p, int not)
 		t = p->l;
 		memcpy(p, t, sizeof(struct etree));
 		free(t);
-		simp_not2(p, !not);
+		__simp_not2(p, !not);
 		break;
 	case T_OR:
 	case T_AND:
-		simp_not2(p->l, not);
-		simp_not2(p->r, not);
+		__simp_not2(p->l, not);
+		__simp_not2(p->r, not);
 		break;
 	case T_PROP:
 		if(not)
 			p->val = -p->val;
 		break;
 	}
+}
+
+void simp_not2(struct etree *p)
+{
+	__simp_not2(p, 0);
 }
