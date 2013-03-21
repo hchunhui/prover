@@ -258,9 +258,9 @@ static int __proof_dist(struct etree *p, int from, int hc, struct list *goal)
 	case T_AND:
 		thc = hc;
 		fprintf(pout, "(and_ind (fun (H%d:", hc++);
-		etree_dump_infix(p->l, stdout);
+		etree_dump_infix(p->l, pout);
 		fprintf(pout, ") (H%d:", hc++);
-		etree_dump_infix(p->r, stdout);
+		etree_dump_infix(p->r, pout);
 		fprintf(pout, ") => (");
 		if(__goal_include(p->l, goal))
 			hc = __proof_dist(p->l, thc, hc, goal);
@@ -272,13 +272,13 @@ static int __proof_dist(struct etree *p, int from, int hc, struct list *goal)
 		thc = hc;
 		fprintf(pout, "(or_ind\n");
 		fprintf(pout, "(fun (H%d:", hc++);
-		etree_dump_infix(p->l, stdout);
+		etree_dump_infix(p->l, pout);
 		fprintf(pout, ") => (");
 		hc = __proof_dist(p->l, thc, hc, goal);
 		fprintf(pout, "))\n");
 		thc = hc;
 		fprintf(pout, "(fun (H%d:", hc++);
-		etree_dump_infix(p->r, stdout);
+		etree_dump_infix(p->r, pout);
 		fprintf(pout, ") => (");
 		hc = __proof_dist(p->r, thc, hc, goal);
 		fprintf(pout, "))\n");
@@ -298,7 +298,7 @@ static int __proof_dist(struct etree *p, int from, int hc, struct list *goal)
 static void define_hypothesis(struct list *p, struct etree *et)
 {
 	fprintf(pout, "Definition L%d:=((fun (H0:", p->seq);
-	etree_dump_infix(et, stdout);
+	etree_dump_infix(et, pout);
 	fprintf(pout, ") =>\n");
 	__proof_dist(et, 0, 1, p);
 	fprintf(pout, ") L0').\nCheck (L%d).\n", p->seq);

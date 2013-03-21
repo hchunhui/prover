@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
 	fprintf(stderr, "\n");
 
 	fprintf(pout, "Hypothesis L0: ");
-	etree_dump_infix(et, stdout);
+	etree_dump_infix(et, pout);
 	fprintf(pout, ".\n");
 
 	/* 消蕴含 */
