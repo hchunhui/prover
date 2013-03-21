@@ -38,19 +38,19 @@ int main(int argc, char *argv[])
 	printf(".\n");
 
 	/* 消蕴含 */
-	proof_impl(et);
+	proof_impl(et, "simp_impl");
 	simp_impl(et);
 	etree_dump_prefix(et, stderr);
 	fprintf(stderr, "\n");
 
 	/* 否定范式 */
-	proof_not1(et);
+	proof_not1(et, "simp_not1");
 	simp_not1(et);
-	proof_not2(et);
+	proof_not2(et, "simp_not2");
 	simp_not2(et);
 	printf("Definition L0':= "
 	       "(iff_imp _ _ "
-	       "(iff_trans _ _ _ elim_impl (iff_trans _ _ _ insert_not1 insert_not2)) "
+	       "(iff_trans _ _ _ simp_impl (iff_trans _ _ _ simp_not1 simp_not2)) "
 	       "L0).\n");
 
 	etree_dump_prefix(et, stderr);

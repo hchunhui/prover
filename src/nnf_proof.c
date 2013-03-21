@@ -44,11 +44,11 @@ static void __proof_imp(struct etree *p)
 	}
 }
 
-void proof_impl(struct etree *p)
+void proof_impl(struct etree *p, char *name)
 {
-	printf("Definition elim_impl:=(");
+	printf("Definition %s:=(", name);
 	__proof_imp(p);
-	printf(").\nCheck (elim_impl).\n");
+	printf(").\nCheck (%s).\n", name);
 }
 
 /*
@@ -134,16 +134,16 @@ static void __proof_not2(struct etree *p, int not)
 	}
 }
 
-void proof_not1(struct etree *p)
+void proof_not1(struct etree *p, char *name)
 {
-	printf("Definition insert_not1:=(");
+	printf("Definition %s:=(", name);
 	__proof_not1(p, 0);
-	printf(").\nCheck (insert_not1).\n");
+	printf(").\nCheck (%s).\n", name);
 }
 
-void proof_not2(struct etree *p)
+void proof_not2(struct etree *p, char *name)
 {
-	printf("Definition insert_not2:=(");
+	printf("Definition %s:=(", name);
 	__proof_not2(p, 0);
-	printf(").\nCheck (insert_not2).\n");
+	printf(").\nCheck (%s).\n", name);
 }
