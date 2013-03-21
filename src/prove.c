@@ -127,10 +127,7 @@ int prove(struct etree *et)
 	for(;;)
 	{
 		if(pend == NULL)
-		{
-			printf("(* no *)\n");
 			return 0;
-		}
 		is = pend;
 		pend = NULL;
 		for(; is;)
@@ -174,10 +171,7 @@ int prove(struct etree *et)
 				p->f1 = it;
 				p->f2 = ir;
 				if(p->cp == 0 && p->cn == 0)
-				{
-					printf("(* yes *)\n");
 					return proof_prove(p, et, 1)-1;
-				}
 				p->next = pend;
 				pend = p;
 	       		}

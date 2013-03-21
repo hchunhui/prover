@@ -13,42 +13,42 @@ static void __proof_imp(struct etree *p)
 	switch(p->type)
 	{
 	case T_IMPL:
-		printf("(iff_trans _ _ _ (L_imp _ _ _ _ (");
+		fprintf(pout, "(iff_trans _ _ _ (L_imp _ _ _ _ (");
 		__proof_imp(p->l);
-		printf(") (");
+		fprintf(pout, ") (");
 		__proof_imp(p->r);
-		printf(")) (imp_or _ _))");
+		fprintf(pout, ")) (imp_or _ _))");
 		break;
 	case T_AND:
-		printf("(L_and _ _ _ _ (");
+		fprintf(pout, "(L_and _ _ _ _ (");
 		__proof_imp(p->l);
-		printf(") (");
+		fprintf(pout, ") (");
 		__proof_imp(p->r);
-		printf("))");
+		fprintf(pout, "))");
 		break;
 	case T_OR:
-		printf("(L_or _ _ _ _ (");
+		fprintf(pout, "(L_or _ _ _ _ (");
 		__proof_imp(p->l);
-		printf(") (");
+		fprintf(pout, ") (");
 		__proof_imp(p->r);
-		printf("))");
+		fprintf(pout, "))");
 		break;
 	case T_NOT:
-		printf("(L_not _ _ (");
+		fprintf(pout, "(L_not _ _ (");
 		__proof_imp(p->l);
-		printf("))");
+		fprintf(pout, "))");
 		break;
 	case T_PROP:
-		printf("(iff_p A%d)", p->val);
+		fprintf(pout, "(iff_p A%d)", p->val);
 		break;
 	}
 }
 
 void proof_impl(struct etree *p, char *name)
 {
-	printf("Definition %s:=(", name);
+	fprintf(pout, "Definition %s:=(", name);
 	__proof_imp(p);
-	printf(").\nCheck (%s).\n", name);
+	fprintf(pout, ").\nCheck (%s).\n", name);
 }
 
 /*
@@ -60,9 +60,9 @@ static void __proof_not1(struct etree *p, int not)
 	switch(p->type)
 	{
 	case T_NOT:
-		printf("(L_not _ _ (");
+		fprintf(pout, "(L_not _ _ (");
 		__proof_not1(p->l, !not);
-		printf("))");
+		fprintf(pout, "))");
 		break;
 	case T_OR:
 		pc1 = "or";
@@ -71,21 +71,21 @@ static void __proof_not1(struct etree *p, int not)
 		pc1 = "and";
 	comm_case:
 		if(not) {
-			printf("(iff_trans _ _ _ (L_%s _ _ _ _ (", pc1);
+			fprintf(pout, "(iff_trans _ _ _ (L_%s _ _ _ _ (", pc1);
 			__proof_not1(p->l, not);
-			printf(") (");
+			fprintf(pout, ") (");
 			__proof_not1(p->r, not);
-			printf(")) (n%s _ _))", pc1);
+			fprintf(pout, ")) (n%s _ _))", pc1);
 		} else {
-			printf("(L_%s _ _ _ _ (", pc1);
+			fprintf(pout, "(L_%s _ _ _ _ (", pc1);
 			__proof_not1(p->l, not);
-			printf(") (");
+			fprintf(pout, ") (");
 			__proof_not1(p->r, not);
-			printf("))");
+			fprintf(pout, "))");
 		}
 		break;
 	case T_PROP:
-		printf("(iff_p A%d)", p->val);
+		fprintf(pout, "(iff_p A%d)", p->val);
 		break;
 	}
 }
@@ -97,9 +97,9 @@ static void __proof_not2(struct etree *p, int not)
 	{
 	case T_NOT:
 		if(not) {
-			printf("(iff_trans _ _ _ (L_not _ _ (L_not _ _ (");
+			fprintf(pout, "(iff_trans _ _ _ (L_not _ _ (L_not _ _ (");
 			__proof_not2(p->l, 0);
-			printf("))) (np _))");
+			fprintf(pout, "))) (np _))");
 		} else {
 			__proof_not2(p->l, 1);
 		}
@@ -111,24 +111,24 @@ static void __proof_not2(struct etree *p, int not)
 		pc1 = "and";
 	comm_case:
 		if(not) {
-			printf("(L_not _ _ (");
+			fprintf(pout, "(L_not _ _ (");
 		}
-		printf("(L_%s _ _ _ _ (", pc1);
+		fprintf(pout, "(L_%s _ _ _ _ (", pc1);
 		__proof_not2(p->l, 0);
-		printf(") (");
+		fprintf(pout, ") (");
 		__proof_not2(p->r, 0);
-		printf("))");
+		fprintf(pout, "))");
 		if(not) {
-			printf("))");
+			fprintf(pout, "))");
 		}
 		break;
 	case T_PROP:
 		if(not) {
-			printf("(L_not _ _ (");
+			fprintf(pout, "(L_not _ _ (");
 		}
-		printf("(iff_p A%d)", p->val);
+		fprintf(pout, "(iff_p A%d)", p->val);
 		if(not) {
-			printf("))");
+			fprintf(pout, "))");
 		}
 		break;
 	}
@@ -136,14 +136,14 @@ static void __proof_not2(struct etree *p, int not)
 
 void proof_not1(struct etree *p, char *name)
 {
-	printf("Definition %s:=(", name);
+	fprintf(pout, "Definition %s:=(", name);
 	__proof_not1(p, 0);
-	printf(").\nCheck (%s).\n", name);
+	fprintf(pout, ").\nCheck (%s).\n", name);
 }
 
 void proof_not2(struct etree *p, char *name)
 {
-	printf("Definition %s:=(", name);
+	fprintf(pout, "Definition %s:=(", name);
 	__proof_not2(p, 0);
-	printf(").\nCheck (%s).\n", name);
+	fprintf(pout, ").\nCheck (%s).\n", name);
 }

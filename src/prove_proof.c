@@ -2,27 +2,27 @@
 #include <stdlib.h>
 #include "etree.h"
 #include "list.h"
+#include "proof.h"
 
-extern char prop_name[][16];
 static void print_lit(int v)
 {
 	if(v > 0)
-		printf("%s", prop_name[v-1]);
+		fprintf(pout, "%s", prop_name[v-1]);
 	else
-		printf("~%s", prop_name[-v-1]);
+		fprintf(pout, "~%s", prop_name[-v-1]);
 }
 
 static void print_vec(int *vec, int n)
 {
 	int i;
 	if(n == 0)
-		printf("False");
+		fprintf(pout, "False");
 	else
 	{
 		print_lit(vec[0]);
 		for(i = 1; i < n; i++)
 		{
-			printf("\\/");
+			fprintf(pout, "\\/");
 			print_lit(vec[i]);
 		}
 	}
@@ -32,7 +32,7 @@ static void rep_print(char *p, int count)
 {
 	int i;
 	for(i = 0; i < count; i++)
-		printf("%s", p);
+		fprintf(pout, "%s", p);
 }
 
 static int first_bit(unsigned long long x)
@@ -106,23 +106,23 @@ static int or_merge(int *vec1, int n1, int *vec2, int n2, int *rank, int *vec)
 static void or_intro(int rank, int *vec, int n, int hi)
 {
 	int i;
-//	printf("(* %d *)", rank);
+//	fprintf(pout, "(* %d *)", rank);
 	for(i = 0; i < rank; i++)
 	{
-		printf("(or_intror (");
+		fprintf(pout, "(or_intror (");
 		print_lit(vec[i]);
-		printf(") ");
+		fprintf(pout, ") ");
 	}
 	if(rank < n-1)
 	{
-		printf("(or_introl (");
+		fprintf(pout, "(or_introl (");
 		print_vec(vec+rank+1, n - rank - 1);
-		printf(") H%d)", hi);
+		fprintf(pout, ") H%d)", hi);
 	}
 	else
-		printf("H%d", hi);
+		fprintf(pout, "H%d", hi);
 	for(i = 0; i < rank; i++)
-		printf(")");
+		fprintf(pout, ")");
 }
 
 static void or_make(int *vec1, int n1, int *rank, int *vec, int n)
@@ -131,18 +131,18 @@ static void or_make(int *vec1, int n1, int *rank, int *vec, int n)
 	for(i = 0; i < n1; i++)
 	{
 		if(i != n1 - 1)
-			printf("(or_ind (fun (H1:");
+			fprintf(pout, "(or_ind (fun (H1:");
 		else
-			printf("(fun (H1:");
+			fprintf(pout, "(fun (H1:");
 		print_lit(vec1[i]);
-		printf(") => ");
+		fprintf(pout, ") => ");
 		/*FIXME: -1 or not*/
 		or_intro(rank[vec1[i]>0?vec1[i]-1:(63-vec1[i])], vec, n, 1);
-		printf(")\n");
+		fprintf(pout, ")\n");
 		if(i == n1 - 1)
 		{
 			for(j = 0; j < n1 - 1; j++)
-				printf(")");
+				fprintf(pout, ")");
 		}
 	}
 }
@@ -153,19 +153,19 @@ static void or_trans(int *vec1, int n1, int *vec2, int n2)
 	int vec[128];
 	int n;
 	n = or_merge(vec1, n1, vec2, n2, rank, vec);
-	printf("(*");
+	fprintf(pout, "(*");
 	print_vec(vec, n);
-	printf("*)\n");
-	printf("(fun (H:(");
+	fprintf(pout, "*)\n");
+	fprintf(pout, "(fun (H:(");
 	print_vec(vec1, n1);
-	printf(")\\/(");
+	fprintf(pout, ")\\/(");
 	print_vec(vec2, n2);
-	printf(")) =>\n\t");
-	printf("(or_ind\n\t(");
+	fprintf(pout, ")) =>\n\t");
+	fprintf(pout, "(or_ind\n\t(");
 	or_make(vec1, n1, rank, vec, n);
-	printf(")\n\t (");
+	fprintf(pout, ")\n\t (");
 	or_make(vec2, n2, rank, vec, n);
-	printf(") H))\n");
+	fprintf(pout, ") H))\n");
 }
 
 static void resolve(
@@ -182,19 +182,19 @@ static void resolve(
 	int hcount = 1;
 	int pl_count;
 	n = or_merge(vec1p, n1p, vec2p, n2p, rank, vec);
-	printf("(fun (H%d:(", hcount++);
+	fprintf(pout, "(fun (H%d:(", hcount++);
 	print_vec(vec1, n1);
-	printf(")) (H%d:(", hcount++);
+	fprintf(pout, ")) (H%d:(", hcount++);
 	print_vec(vec2, n2);
-	printf(")) =>\n\t");
+	fprintf(pout, ")) =>\n\t");
 
 	for(i = 0; i < n1; i++)
 	{
 		if(i != n1 - 1)
-			printf("(or_ind ");
-		printf("(fun (H%d:", hcount++);
+			fprintf(pout, "(or_ind ");
+		fprintf(pout, "(fun (H%d:", hcount++);
 		print_lit(vec1[i]);
-		printf(") => ");
+		fprintf(pout, ") => ");
 		if(vec1[i] != var)
 			or_intro(rank[vec1[i]>0?vec1[i]-1:(63-vec1[i])],
 				 vec, n, hcount-1);
@@ -203,30 +203,30 @@ static void resolve(
 			for(j = 0; j < n2; j++)
 			{
 				if(j != n2 - 1)
-					printf("(or_ind ");
-				printf("(fun (H%d:", hcount++);
+					fprintf(pout, "(or_ind ");
+				fprintf(pout, "(fun (H%d:", hcount++);
 				print_lit(vec2[j]);
-				printf(") => ");
+				fprintf(pout, ") => ");
 				if(vec2[j] != -var)
 					or_intro(rank[vec2[j]>0?vec2[j]-1:(63-vec2[j])],
 						 vec, n, hcount-1);
 				else {
-					printf("False_ind (");
+					fprintf(pout, "False_ind (");
 					print_vec(vec, n);
-					printf(") (H%d H%d)", hcount-1, pl_count);
+					fprintf(pout, ") (H%d H%d)", hcount-1, pl_count);
 				}
-				printf(")\n");
+				fprintf(pout, ")\n");
 				if(j == n2 - 1)
 					rep_print(")", n2-1);
 			}
-			printf("H2");
+			fprintf(pout, "H2");
 		}
-		printf(")\n");
+		fprintf(pout, ")\n");
 		if(i == n1 - 1)
 			rep_print(")", n1-1);
 	}
-	printf("H1");
-	printf(")\n");
+	fprintf(pout, "H1");
+	fprintf(pout, ")\n");
 }
 
 
@@ -257,32 +257,32 @@ static int __proof_dist(struct etree *p, int from, int hc, struct list *goal)
 	{
 	case T_AND:
 		thc = hc;
-		printf("(and_ind (fun (H%d:", hc++);
+		fprintf(pout, "(and_ind (fun (H%d:", hc++);
 		etree_dump_infix(p->l, stdout);
-		printf(") (H%d:", hc++);
+		fprintf(pout, ") (H%d:", hc++);
 		etree_dump_infix(p->r, stdout);
-		printf(") => (");
+		fprintf(pout, ") => (");
 		if(__goal_include(p->l, goal))
 			hc = __proof_dist(p->l, thc, hc, goal);
 		else if(__goal_include(p->r, goal))
 			hc = __proof_dist(p->r, thc+1, hc, goal);
-		printf("))H%d)\n", from);
+		fprintf(pout, "))H%d)\n", from);
 		break;
 	case T_OR:
 		thc = hc;
-		printf("(or_ind\n");
-		printf("(fun (H%d:", hc++);
+		fprintf(pout, "(or_ind\n");
+		fprintf(pout, "(fun (H%d:", hc++);
 		etree_dump_infix(p->l, stdout);
-		printf(") => (");
+		fprintf(pout, ") => (");
 		hc = __proof_dist(p->l, thc, hc, goal);
-		printf("))\n");
+		fprintf(pout, "))\n");
 		thc = hc;
-		printf("(fun (H%d:", hc++);
+		fprintf(pout, "(fun (H%d:", hc++);
 		etree_dump_infix(p->r, stdout);
-		printf(") => (");
+		fprintf(pout, ") => (");
 		hc = __proof_dist(p->r, thc, hc, goal);
-		printf("))\n");
-		printf("H%d)\n", from);
+		fprintf(pout, "))\n");
+		fprintf(pout, "H%d)\n", from);
 		break;
 	case T_PROP:
 		n1 = bit2vec(goal->cp, goal->cn, vec1);
@@ -297,11 +297,11 @@ static int __proof_dist(struct etree *p, int from, int hc, struct list *goal)
 
 static void define_hypothesis(struct list *p, struct etree *et)
 {
-	printf("Definition L%d:=((fun (H0:", p->seq);
+	fprintf(pout, "Definition L%d:=((fun (H0:", p->seq);
 	etree_dump_infix(et, stdout);
-	printf(") =>\n");
+	fprintf(pout, ") =>\n");
 	__proof_dist(et, 0, 1, p);
-	printf(") L0').\nCheck (L%d).\n", p->seq);
+	fprintf(pout, ") L0').\nCheck (L%d).\n", p->seq);
 }
 
 static void define_theorem(struct list *p)
@@ -322,36 +322,36 @@ static void define_theorem(struct list *p)
 	n1p = bit2vec(p->f1->cp & (~x1), p->f1->cn & (~x2), vec1p);
 	n2p = bit2vec(p->f2->cp & (~x2), p->f2->cn & (~x1), vec2p);
 
-	printf("Lemma L%d:", p->seq);
+	fprintf(pout, "Lemma L%d:", p->seq);
 	print_vec(vec, n);
-	printf(".\nProof (\n");
+	fprintf(pout, ".\nProof (\n");
 	if(p->f1->cp & x)
 	{
 		resolve(vec1, n1, vec2, n2, vec1p, n1p, vec2p, n2p, rvar);
-		printf("L%d L%d).\n", p->f1->seq, p->f2->seq);
+		fprintf(pout, "L%d L%d).\n", p->f1->seq, p->f2->seq);
 	}
 	else
 	{
 		resolve(vec2, n2, vec1, n1, vec2p, n2p, vec1p, n1p, rvar);
-		printf("L%d L%d).\n", p->f2->seq, p->f1->seq);
+		fprintf(pout, "L%d L%d).\n", p->f2->seq, p->f1->seq);
 	}
 }
 
 static void clause_show(struct list *p, struct etree *et)
 {
 	int is_hypothesis = !(p->f1);
-	printf("(* [%3d] ", p->seq);
+	fprintf(pout, "(* [%3d] ", p->seq);
 	if(is_hypothesis)
 	{
-		printf("   hypothesis *)\n");
+		fprintf(pout, "   hypothesis *)\n");
 		define_hypothesis(p, et);
 	}
 	else
 	{
-		printf("   resolve [%d] [%d] *)\n", p->f1->seq, p->f2->seq);
+		fprintf(pout, "   resolve [%d] [%d] *)\n", p->f1->seq, p->f2->seq);
 		define_theorem(p);
 	}
-	printf("\n");
+	fprintf(pout, "\n");
 }
 
 int proof_prove(struct list *g, struct etree *et, int seq)

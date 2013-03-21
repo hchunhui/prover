@@ -8,7 +8,9 @@
 struct etree *parse();
 int prove(struct etree *et);
 
+/* global variable */
 char prop_name[64][16];
+FILE *pout;
 
 int main(int argc, char *argv[])
 {
@@ -17,11 +19,12 @@ int main(int argc, char *argv[])
 	struct etree *et;
 	for(i = 0; i < 64; i++)
 		sprintf(prop_name[i], "A%d", i+1);
+	pout = stdout;
 
-	printf("Section prove.\n");
+	fprintf(pout, "Section prove.\n");
 	for(i = 0; i < 64; i++)
-		printf("Variable %s:Prop.\n", prop_name[i]);
-	printf("Section prove0.\n");
+		fprintf(pout, "Variable %s:Prop.\n", prop_name[i]);
+	fprintf(pout, "Section prove0.\n");
 
 	/* 输入a */
 	et = parse();
@@ -33,9 +36,9 @@ int main(int argc, char *argv[])
 	etree_dump_prefix(et, stderr);
 	fprintf(stderr, "\n");
 
-	printf("Hypothesis L0: ");
+	fprintf(pout, "Hypothesis L0: ");
 	etree_dump_infix(et, stdout);
-	printf(".\n");
+	fprintf(pout, ".\n");
 
 	/* 消蕴含 */
 	proof_impl(et, "simp_impl");
@@ -48,22 +51,22 @@ int main(int argc, char *argv[])
 	simp_not1(et);
 	proof_not2(et, "simp_not2");
 	simp_not2(et);
-	printf("Definition L0':= "
-	       "(iff_imp _ _ "
-	       "(iff_trans _ _ _ simp_impl (iff_trans _ _ _ simp_not1 simp_not2)) "
-	       "L0).\n");
+	fprintf(pout, "Definition L0':= "
+		"(iff_imp _ _ "
+		"(iff_trans _ _ _ simp_impl (iff_trans _ _ _ simp_not1 simp_not2)) "
+		"L0).\n");
 
 	etree_dump_prefix(et, stderr);
 	fprintf(stderr, "\n");
 
 	/* 归结 */
 	seq = prove(et);
-	printf("End prove0.\n");
+	fprintf(pout, "End prove0.\n");
 
 	if(seq)
-		printf("Definition Lem:=(NNPP _ L%d).\n", seq);
-	printf("End prove.\n");
+		fprintf(pout, "Definition Lem:=(NNPP _ L%d).\n", seq);
+	fprintf(pout, "End prove.\n");
 	if(seq)
-		printf("Check Lem.\n");
+		fprintf(pout, "Check Lem.\n");
 	return 0;
 }

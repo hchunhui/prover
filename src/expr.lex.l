@@ -33,7 +33,7 @@ A[0-9]+			{
 [ \v\f]			{  }
 \t			{ yycolumn += 8 - yycolumn%8; }
 [\n\r]			{ yycolumn = 0;return EOL;}
-.			{ printf("unmatched: %s\n", yytext); return 1; }
+.			{ fprintf(stderr, "unmatched: %s\n", yytext); return 1; }
 
 %%
 
