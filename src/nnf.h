@@ -4,7 +4,8 @@
 struct etree;
 struct list;
 
-void proof_impl(struct etree *p);
-void proof_not(struct etree *p);
+void simp_impl(struct etree *p);
+void simp_not1(struct etree *p, int not);
+void simp_not2(struct etree *p, int not);
 
 #endif /* _NNF_H_ */
