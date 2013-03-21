@@ -6,6 +6,8 @@
 #include "proof.h"
 
 struct etree *parse();
+int prove(struct etree *et);
+
 char prop_name[64][16];
 
 int main(int argc, char *argv[])

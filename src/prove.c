@@ -3,6 +3,7 @@
 #include <string.h>
 #include "etree.h"
 #include "list.h"
+#include "proof.h"
 
 static int bit_count4(unsigned int n) 
 { 
@@ -66,6 +67,7 @@ static struct etree *simp_dist(struct etree *p)
 	case T_PROP:
 		return etree_mknode(T_PROP, p->val, NULL, NULL);
 	}
+	return NULL;
 }
 
 static void __cons_clause(struct etree *p, struct list *list)
@@ -112,7 +114,6 @@ int prove(struct etree *et)
 	struct list *p;
 	unsigned long long x, x1, x2;
 	int seq = 1;
-	int orig_seq;
 	struct list *clauses;
 	struct etree *t;
 

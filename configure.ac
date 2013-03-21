@@ -5,7 +5,7 @@ AC_PREREQ([2.65])
 AC_INIT(prover, 0.1, hchunhui@mail.ustc.edu.cn)
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
-AC_CONFIG_SRCDIR([src/prove_resolve.c])
+AC_CONFIG_SRCDIR([src/main.c])
 AC_CONFIG_HEADERS([src/config.h])
 
 # Checks for programs.

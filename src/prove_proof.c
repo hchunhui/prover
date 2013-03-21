@@ -34,11 +34,6 @@ static void rep_print(char *p, int count)
 		printf("%s", p);
 }
 
-static int max(int a, int b)
-{
-	return a>b?a:b;
-}
-
 static int first_bit(unsigned long long x)
 {
 	unsigned long long mask = 0xffffffffull;
@@ -360,7 +355,6 @@ static void clause_show(struct list *p, struct etree *et)
 
 int proof_prove(struct list *g, struct etree *et, int seq)
 {
-	int orig_seq;
 	if(g->f1)
 	{
 		if(g->f1->seq == 0)

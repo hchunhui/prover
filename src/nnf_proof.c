@@ -10,8 +10,6 @@
  */
 static void __proof_imp(struct etree *p)
 {
-
-	struct etree *t;
 	switch(p->type)
 	{
 	case T_IMPL:
