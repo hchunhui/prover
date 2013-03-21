@@ -4,32 +4,30 @@
 #include "etree.h"
 #include "nnf.h"
 #include "proof.h"
+#include "pred.h"
 
+void pred_init();
 struct etree *parse();
 int prove(struct etree *et);
 
 /* global variable */
-char prop_name[64][16];
 FILE *pout;
 
 int main(int argc, char *argv[])
 {
-	int i;
 	int seq;
 	struct etree *et;
-	for(i = 0; i < 64; i++)
-		sprintf(prop_name[i], "A%d", i+1);
 	pout = stdout;
-
-	fprintf(pout, "Section prove.\n");
-	for(i = 0; i < 64; i++)
-		fprintf(pout, "Variable %s:Prop.\n", prop_name[i]);
-	fprintf(pout, "Section prove0.\n");
+	pred_init();
 
 	/* 输入a */
 	et = parse();
 	if(et == NULL)
 		exit(1);
+
+	fprintf(pout, "Section prove.\n");
+	prop_decl(pout);
+	fprintf(pout, "Section prove0.\n");
 
 	/* ~a */
 	et = etree_mknode(T_NOT, 0, et, NULL);

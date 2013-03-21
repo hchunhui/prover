@@ -1,14 +1,17 @@
 #include <stdio.h>
 #include <string.h>
 #include "etree.h"
-#include "proof.h"
+#include "pred.h"
 
 static void print_lit(int val, FILE *fp)
 {
 	if(val < 0)
-		fprintf(fp, "~%s", prop_name[-val-1]);
+	{
+		fprintf(fp, "~");
+		prop_print(-val-1, fp);
+	}
 	else
-		fprintf(fp, "%s", prop_name[val-1]);
+		prop_print(val-1, fp);
 }
 
 void etree_dump_infix(struct etree *p, FILE *fp)

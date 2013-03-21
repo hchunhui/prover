@@ -23,12 +23,21 @@ A[0-9]+			{
 	yylval.ival = val;
 	return(PROP);
 }
+x[0-9]+			{
+	int val;
+	sscanf(yytext, "x%d", &val);
+	if(val == 0 || val > 64)
+	       exit(1);
+	yylval.ival = val;
+	return(VAR);
+}
 "~"			{ return(NOT); }
 "/\\"			{ return(AND); }
 "\\/"			{ return(OR); }
 "->"			{ return(IMPL); }
 "("			{ return('('); }
 ")"			{ return(')'); }
+"="			{ return(EQU); }
 
 [ \v\f]			{  }
 \t			{ yycolumn += 8 - yycolumn%8; }

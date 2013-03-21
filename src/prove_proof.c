@@ -3,13 +3,19 @@
 #include "etree.h"
 #include "list.h"
 #include "proof.h"
+#include "pred.h"
 
 static void print_lit(int v)
 {
 	if(v > 0)
-		fprintf(pout, "%s", prop_name[v-1]);
+	{
+		prop_print(v-1, pout);
+	}
 	else
-		fprintf(pout, "~%s", prop_name[-v-1]);
+	{
+		fprintf(pout, "~");
+		prop_print(-v-1, pout);
+	}
 }
 
 static void print_vec(int *vec, int n)

@@ -4,10 +4,13 @@
 #include "list.h"
 #include "etree.h"
 #include "proof.h"
+#include "pred.h"
 
 static void print_iffp(int val)
 {
-	fprintf(pout, "(iff_p %s)", prop_name[val-1]);
+	fprintf(pout, "(iff_p ");
+	prop_print(val-1, pout);
+	fprintf(pout, ")");
 }
 
 /*

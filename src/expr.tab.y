@@ -1,6 +1,7 @@
 %{
 #include <stdio.h>
 #include "etree.h"
+#include "pred.h"
 
 static struct etree *et;
 void yyerror(char* msg)
@@ -11,7 +12,7 @@ void yyerror(char* msg)
 
 %locations
 
-%token PROP IMPL OR AND NOT EOL
+%token PROP IMPL OR AND NOT EQU VAR EOL
 %union {
 	int ival;
 	struct etree *tval;
@@ -24,6 +25,7 @@ void yyerror(char* msg)
 %nonassoc NOT
 
 %type <ival> PROP
+%type <ival> VAR
 %type <tval> expr
 %error-verbose
 /*%define parse.lac full*/
@@ -33,7 +35,7 @@ main: expr EOL {et = $1;};
 expr
 	: PROP
 	{
-		$$ = etree_mknode(T_PROP, $1, NULL, NULL);
+		$$ = etree_mknode(T_PROP, 1+prop_new($1), NULL, NULL);
 	}
 	| '(' expr ')'
 	{
@@ -54,6 +56,10 @@ expr
 	| NOT expr
 	{
 		$$ = etree_mknode(T_NOT, 0, $2, NULL);
+	}
+	| VAR EQU VAR
+	{
+		$$ = etree_mknode(T_PROP, 1+pred_new(P_EQU, $1, $3), NULL, NULL);
 	}
 	;
 %%
