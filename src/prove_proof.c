@@ -3,12 +3,13 @@
 #include "etree.h"
 #include "list.h"
 
+extern char prop_name[][16];
 static void print_lit(int v)
 {
 	if(v > 0)
-		printf("A%d", v);
+		printf("%s", prop_name[v-1]);
 	else
-		printf("~A%d", -v);
+		printf("~%s", prop_name[-v-1]);
 }
 
 static void print_vec(int *vec, int n)
