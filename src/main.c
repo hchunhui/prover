@@ -6,7 +6,7 @@
 #include "proof.h"
 
 struct etree *parse();
-int prove(struct etree *et);
+int prove_naive(struct etree *et);
 
 /* global variable */
 char prop_name[64][16];
@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 	fprintf(stderr, "\n");
 
 	/* 归结 */
-	seq = prove(et);
+	seq = prove_naive(et);
 	fprintf(pout, "End prove0.\n");
 
 	if(seq)

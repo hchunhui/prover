@@ -354,14 +354,14 @@ static void clause_show(struct list *p, struct etree *et)
 	fprintf(pout, "\n");
 }
 
-int proof_prove(struct list *g, struct etree *et, int seq)
+int proof_prove_naive(struct list *g, struct etree *et, int seq)
 {
 	if(g->f1)
 	{
 		if(g->f1->seq == 0)
-			seq = proof_prove(g->f1, et, seq);
+			seq = proof_prove_naive(g->f1, et, seq);
 		if(g->f2->seq == 0)
-			seq = proof_prove(g->f2, et, seq);
+			seq = proof_prove_naive(g->f2, et, seq);
 	}
 	g->seq = seq;
 	clause_show(g, et);
