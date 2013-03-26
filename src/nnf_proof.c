@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "list.h"
 #include "etree.h"
 #include "proof.h"
 #include "pred.h"

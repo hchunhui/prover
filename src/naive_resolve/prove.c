@@ -5,6 +5,8 @@
 #include "list.h"
 #include "proof.h"
 
+int proof_prove_naive(struct list *g, struct etree *et, int seq);
+
 static int bit_count4(unsigned int n) 
 { 
     n = (n & 0x55555555) + ((n >> 1) & 0x55555555) ;
@@ -107,7 +109,7 @@ static struct list *cons_clause(struct etree *p)
 	}
 }
 
-int prove(struct etree *et)
+int prove_naive(struct etree *et)
 {
 	struct list *base, *pend;
 	struct list *is, *ir, *it;
@@ -171,7 +173,7 @@ int prove(struct etree *et)
 				p->f1 = it;
 				p->f2 = ir;
 				if(p->cp == 0 && p->cn == 0)
-					return proof_prove(p, et, 1)-1;
+					return proof_prove_naive(p, et, 1)-1;
 				p->next = pend;
 				pend = p;
 	       		}

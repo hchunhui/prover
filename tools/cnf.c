@@ -9,10 +9,11 @@ int main(int argc, char *argv[])
 {
 	int i, j;
 	char line[128];
+	printf("~(");
 	for(j = 0;gets(line);)
 	{
 		int a[4];
-		if(line[0] == 'c' || line[0] == 'p' || line[0] == '%' || line[0] == '0')
+		if(line[0] == 'c' || line[0] == 'p' || line[0] == '%' || line[0] == '0' || line[0] == 0)
 			continue;
 		sscanf(line, "%d %d %d %d", a, a+1, a+2, a+3);
 		if(j)
@@ -28,5 +29,6 @@ int main(int argc, char *argv[])
 		printf(")");
 		j++;
 	}
+	printf(")\n");
 	return 0;
 }

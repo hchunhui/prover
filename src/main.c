@@ -8,7 +8,8 @@
 
 void pred_init();
 struct etree *parse();
-int prove(struct etree *et);
+int prove_naive(struct etree *et);
+int prove_dpll(struct etree *et);
 
 /* global variable */
 FILE *pout;
@@ -58,7 +59,7 @@ int main(int argc, char *argv[])
 	fprintf(stderr, "\n");
 
 	/* 归结 */
-	seq = prove(et);
+	seq = prove_dpll(et);
 	fprintf(pout, "End prove0.\n");
 
 	if(seq)
