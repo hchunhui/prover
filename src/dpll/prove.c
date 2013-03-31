@@ -5,6 +5,7 @@
 #include "etree.h"
 #include "proof.h"
 #include "dpll.h"
+#include "pred.h"
 
 #define MAX 256
 static struct lit_set clauses[MAX];
@@ -118,6 +119,31 @@ static void cons_clause(struct etree *p)
 	}
 }
 
+int equal_test(unsigned long long env, int v)
+{
+	int i;
+	struct pred p, q;
+	pred_get(&p, v);
+	if(p.type != P_EQU)
+		return 0;
+	set_init();
+	for(i = 0; i < 64; i++, env >>= 1)
+	{
+		if(env & 1)
+		{
+			pred_get(&q, i);
+			if(q.type != P_EQU)
+				continue;
+			set_union(q.lv, q.rv);
+		}
+	}
+	if(set_find(p.lv, p.rv))
+	{
+		return 1;
+	}
+	return 0;
+}
+
 static struct dpll_tree
 *__prove_dpll(int lev, struct lit_set *prev, unsigned long long mask)
 {
@@ -168,6 +194,14 @@ static struct dpll_tree
 				goto choose_next2;
 			}
 		}
+		if(equal_test(curr->cp, lev)) {
+			clauses[num_clauses].cp = vmask;
+			clauses[num_clauses].cn = curr->cp;
+			tr->fi = num_clauses;
+			cl_ref[num_clauses] = 1;
+			num_clauses++;
+			goto choose_next2;
+		}
 		tr->f = __prove_dpll(lev+1, curr, mask>>1);
 	choose_next2:;
 	} else {
@@ -206,13 +240,15 @@ int prove_dpll(struct etree *et)
 		cn |= clauses[i].cn;
 	}
 	mask = cp | cn;
-	assign.cp = cp & (cp ^ cn);
+	/*assign.cp = cp & (cp ^ cn);
 	assign.cn = cn & (cp ^ cn);
 	for(i = 0; i < num_clauses; i++)
 	{
 		cp &= ~assign.cp;
 		cn &= ~assign.cn;
-	}
+		}*/
+	assign.cp = 0;
+	assign.cn = 0;
 
 	fprintf(stderr, "num:%d\n", num_clauses);
 	fprintf(stderr, "initial assign %016llx %016llx mask %016llx\n", assign.cp, assign.cn, mask);

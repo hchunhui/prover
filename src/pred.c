@@ -1,12 +1,6 @@
 #include <stdio.h>
 #include "pred.h"
 
-struct pred
-{
-	int type;
-	int lv, rv;
-};
-
 static struct pred pred_tab[64];
 static char atom_name[64][16];
 
@@ -46,6 +40,11 @@ int pred_new(int type, int lv, int rv)
 		return id;
 	}
 	return -1;
+}
+
+void pred_get(struct pred *p, int v)
+{
+	*p = pred_tab[v];
 }
 
 int prop_new(int i)
