@@ -1,6 +1,7 @@
 #ifndef _PROOF_UTILS_H_
 #define _PROOF_UTILS_H_
 #include "proof.h"
+#include "pred.h"
 
 static void print_lit(int v)
 {

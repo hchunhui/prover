@@ -5,6 +5,7 @@
 #include "dpll.h"
 #include "proof_utils.h"
 
+void equal_proof(int seq, struct lit_set *lit);
 struct __internal
 {
 	unsigned long long cp;
