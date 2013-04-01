@@ -23,14 +23,31 @@ A[0-9]+			{
 	yylval.ival = val;
 	return(PROP);
 }
-x[0-9]+			{
+c[0-9]+			{
 	int val;
-	sscanf(yytext, "x%d", &val);
-	if(val == 0 || val > 64)
+	sscanf(yytext, "c%d", &val);
+	if(val >= 4)
 	       exit(1);
 	yylval.ival = val;
-	return(VAR);
+	return(FUNC);
 }
+f[0-9]+			{
+	int val;
+	sscanf(yytext, "f%d", &val);
+	if(val >= 4)
+	       exit(1);
+	yylval.ival = 4 + val;
+	return(FUNC);
+}
+g[0-9]+			{
+	int val;
+	sscanf(yytext, "g%d", &val);
+	if(val >= 4)
+	       exit(1);
+	yylval.ival = 8 + val;
+	return(FUNC);
+}
+
 "~"			{ return(NOT); }
 "/\\"			{ return(AND); }
 "\\/"			{ return(OR); }
@@ -38,6 +55,7 @@ x[0-9]+			{
 "("			{ return('('); }
 ")"			{ return(')'); }
 "="			{ return(EQU); }
+","			{ return(','); }
 
 [ \v\f]			{  }
 \t			{ yycolumn += 8 - yycolumn%8; }

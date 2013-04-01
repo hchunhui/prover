@@ -2,6 +2,7 @@
 #include "dpll.h"
 #include "proof.h"
 #include "pred.h"
+#include "func.h"
 #include "proof_utils.h"
 static int fa[64];
 static int id[64];
@@ -20,7 +21,9 @@ static int get_fa_proof(int v)
 	n = 0;
 	if(fa[v] == v)
 	{
-		fprintf(pout, "(refl_equal x%d)", v);
+		fprintf(pout, "(refl_equal ");
+		func_print(v, pout);
+		fprintf(pout, ")");
 		return v;
 	}
 	while(fa[v] != v)

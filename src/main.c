@@ -5,8 +5,10 @@
 #include "nnf.h"
 #include "proof.h"
 #include "pred.h"
+#include "func.h"
 
 void pred_init();
+void func_init();
 struct etree *parse();
 int prove_naive(struct etree *et);
 int prove_dpll(struct etree *et);
@@ -19,6 +21,7 @@ int main(int argc, char *argv[])
 	int seq;
 	struct etree *et;
 	pout = stdout;
+	func_init();
 	pred_init();
 
 	/* 输入a */
@@ -27,6 +30,7 @@ int main(int argc, char *argv[])
 		exit(1);
 
 	fprintf(pout, "Section prove.\n");
+	func_decl(pout);
 	prop_decl(pout);
 	fprintf(pout, "Section prove0.\n");
 

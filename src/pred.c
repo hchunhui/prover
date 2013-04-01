@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "pred.h"
+#include "func.h"
 
 static struct pred pred_tab[64];
 static char atom_name[64][16];
@@ -64,7 +65,11 @@ void prop_print(int id, FILE *fp)
 		fprintf(fp, "%s", atom_name[id]);
 		break;
 	case P_EQU:
-		fprintf(fp, "(x%d=x%d)", pred_tab[id].lv, pred_tab[id].rv);
+		fprintf(fp, "(");
+		func_print(pred_tab[id].lv, fp);
+		fprintf(fp, "=");
+		func_print(pred_tab[id].rv, fp);
+		fprintf(fp, ")");
 		break;
 	}
 }
@@ -85,8 +90,4 @@ void prop_decl(FILE *fp)
 			}
 		fprintf(fp, ":Prop.\n");
 	}
-	fprintf(fp, "Variable");
-	for(i = 0; i < 64; i++)
-		fprintf(fp, " x%d", i+1);
-	fprintf(fp, ":Type.\n");
 }
