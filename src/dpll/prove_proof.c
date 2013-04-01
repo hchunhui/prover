@@ -50,16 +50,16 @@ static int bit2vec(unsigned long long cp, unsigned long long cn, int *vec)
 {
 	int i, r;
 	r = 0;
-	for(i = 0; i < 64; cp >>=1, i++)
-		if(cp & 1)
-		{
-			vec[r] = i+1;
-			r++;
-		}
 	for(i = 0; i < 64; cn >>=1, i++)
 		if(cn & 1)
 		{
 			vec[r] = -(i+1);
+			r++;
+		}
+	for(i = 0; i < 64; cp >>=1, i++)
+		if(cp & 1)
+		{
+			vec[r] = (i+1);
 			r++;
 		}
 	return r;
@@ -68,7 +68,7 @@ static int bit2vec(unsigned long long cp, unsigned long long cn, int *vec)
 static int or_merge(int *vec1, int n1, int *vec2, int n2, int *rank, int *vec)
 {
 	int i;
-	int r;
+	int n;
 	unsigned long long cp, cn;
 	cp = 0;	cn = 0;
 	for(i = 0; i < n1; i++)
@@ -81,24 +81,15 @@ static int or_merge(int *vec1, int n1, int *vec2, int n2, int *rank, int *vec)
 			cp |= 1ull << (vec2[i]-1);
 		else
 			cn |= 1ull << (-vec2[i]-1);
-	r = 0;
 	for(i = 0; i < 128; i++)
 		rank[i] = -1;
-	for(i = 0; i < 64; cp >>=1, i++)
-		if(cp & 1)
-		{
-			rank[i] = r;
-			vec[r] = i+1;
-			r++;
-		}
-	for(i = 0; i < 64; cn >>=1, i++)
-		if(cn & 1)
-		{
-			rank[64+i] = r;
-			vec[r] = -(i+1);
-			r++;
-		}
-	return r;
+	n = bit2vec(cp, cn, vec);
+	for(i = 0; i < n; i++)
+		if(vec[i] < 0)
+			rank[64-vec[i]-1] = i;
+		else
+			rank[vec[i]-1] = i;
+	return n;
 }
 
 static void or_intro(int rank, int *vec, int n, int hi)
