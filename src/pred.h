@@ -1,5 +1,6 @@
 #ifndef _PRED_H_
 #define _PRED_H_
+#include <stdio.h>
 
 struct pred
 {
