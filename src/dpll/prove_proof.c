@@ -3,67 +3,13 @@
 #include "etree.h"
 #include "proof.h"
 #include "dpll.h"
+#include "proof_utils.h"
 
 struct __internal
 {
 	unsigned long long cp;
 	unsigned long long cn;
 };
-
-static void print_lit(int v)
-{
-        if(v > 0)
-        {
-                prop_print(v-1, pout);
-        }
-        else
-        {
-                fprintf(pout, "~");
-                prop_print(-v-1, pout);
-        }
-}
-
-static void print_vec(int *vec, int n)
-{
-	int i;
-	if(n == 0)
-		fprintf(pout, "False");
-	else
-	{
-		print_lit(vec[0]);
-		for(i = 1; i < n; i++)
-		{
-			fprintf(pout, "\\/");
-			print_lit(vec[i]);
-		}
-	}
-}
-
-static void rep_print(char *p, int count)
-{
-	int i;
-	for(i = 0; i < count; i++)
-		fprintf(pout, "%s", p);
-}
-
-static int bit2vec(unsigned long long cp, unsigned long long cn, int *vec)
-{
-	int i, r;
-	r = 0;
-	for(i = 0; i < 64; cn >>=1, i++)
-		if(cn & 1)
-		{
-			vec[r] = -(i+1);
-			r++;
-		}
-	for(i = 0; i < 64; cp >>=1, i++)
-		if(cp & 1)
-		{
-			vec[r] = (i+1);
-			r++;
-		}
-	return r;
-}
 
 static int or_merge(int *vec1, int n1, int *vec2, int n2, int *rank, int *vec)
 {
@@ -301,7 +247,11 @@ void proof_dpll_proof(
 	for(i = 0; i < n; i++) {
 		if(cl_ref[i] == 0)
 			continue;
-		define_hypothesis(i+1, cl[i].cp, cl[i].cn, et);
+/*FIXME:hard wire*/
+		if(cl_ref[i] == 1)
+			define_hypothesis(i+1, cl[i].cp, cl[i].cn, et);
+		else
+			equal_proof(i+1, cl+i);
 	}
 	fprintf(pout, "Lemma L%d:False.\nProof (", n+1);
 	__prove_dpll_proof(tr, cl);

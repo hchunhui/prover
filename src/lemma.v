@@ -62,3 +62,9 @@ Lemma L_not: forall A B:Prop, (A<->B)->((~A)<->(~B)).
 intros A B.
 tauto.
 Qed.
+
+Lemma horn: forall P Q:Prop, (P->Q)->(~P\/Q).
+intros.
+apply NNPP.
+tauto.
+Qed.

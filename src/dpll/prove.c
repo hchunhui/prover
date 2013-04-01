@@ -5,7 +5,7 @@
 #include "etree.h"
 #include "proof.h"
 #include "dpll.h"
-#include "pred.h"
+#include "equal.h"
 
 #define MAX 256
 static struct lit_set clauses[MAX];
@@ -119,35 +119,10 @@ static void cons_clause(struct etree *p)
 	}
 }
 
-int equal_test(unsigned long long env, int v)
-{
-	int i;
-	struct pred p, q;
-	pred_get(&p, v);
-	if(p.type != P_EQU)
-		return 0;
-	set_init();
-	for(i = 0; i < 64; i++, env >>= 1)
-	{
-		if(env & 1)
-		{
-			pred_get(&q, i);
-			if(q.type != P_EQU)
-				continue;
-			set_union(q.lv, q.rv);
-		}
-	}
-	if(set_find(p.lv, p.rv))
-	{
-		return 1;
-	}
-	return 0;
-}
-
 static struct dpll_tree
 *__prove_dpll(int lev, struct lit_set *prev, unsigned long long mask)
 {
-	unsigned long long vmask, amask;
+	unsigned long long vmask, amask, eq_env;
 	struct lit_set cur, *curr;
 	struct dpll_tree *tr;
 	int i;
@@ -194,11 +169,12 @@ static struct dpll_tree
 				goto choose_next2;
 			}
 		}
-		if(equal_test(curr->cp, lev)) {
+		eq_env = curr->cp;
+		if(equal_test(&eq_env, lev)) {
 			clauses[num_clauses].cp = vmask;
-			clauses[num_clauses].cn = curr->cp;
+			clauses[num_clauses].cn = eq_env;
 			tr->fi = num_clauses;
-			cl_ref[num_clauses] = 1;
+			cl_ref[num_clauses] = 2;/*FIXME: hard wire*/
 			num_clauses++;
 			goto choose_next2;
 		}
