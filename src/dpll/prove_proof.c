@@ -5,7 +5,6 @@
 #include "dpll.h"
 #include "proof_utils.h"
 
-void equal_proof(int seq, struct lit_set *lit);
 struct __internal
 {
 	unsigned long long cp;
@@ -191,14 +190,12 @@ static void resolve(int *vec, int n)
 }
 
 
-static void define_hypothesis(int seq,
-			      unsigned long long cp,
-			      unsigned long long cn,
-			      struct etree *et)
+void cnf_proof(int seq, struct lit_set *cl)
 {
 	struct __internal goal;
-	goal.cp = cp;
-	goal.cn = cn;
+	struct etree *et = cl->extra;
+	goal.cp = cl->cp;
+	goal.cn = cl->cn;
 	fprintf(pout, "Definition L%d:=((fun (H0:", seq);
 	etree_dump_infix(et, pout);
 	fprintf(pout, ") =>\n");
@@ -238,7 +235,6 @@ static void __prove_dpll_proof(struct dpll_tree *tr, struct lit_set *cl)
 }
 
 void proof_dpll_proof(
-	struct etree *et,
 	struct dpll_tree *tr,
 	struct lit_set *cl,
 	int *cl_ref,
@@ -248,11 +244,8 @@ void proof_dpll_proof(
 	for(i = 0; i < n; i++) {
 		if(cl_ref[i] == 0)
 			continue;
-/*FIXME:hard wire*/
 		if(cl_ref[i] == 1)
-			define_hypothesis(i+1, cl[i].cp, cl[i].cn, et);
-		else
-			equal_proof(i+1, cl+i);
+			cl[i].proof(i+1, cl + i);
 	}
 	fprintf(pout, "Lemma L%d:False.\nProof (", n+1);
 	__prove_dpll_proof(tr, cl);

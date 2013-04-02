@@ -113,3 +113,10 @@ void func_decl(FILE *fp)
 		}
 	}
 }
+
+void func_get(struct func *f, struct func_info *fi, int v)
+{
+	*f = func_tab[v];
+	if(func_tab[v].type != -1)
+		*fi = func_info_tab[func_tab[v].type];
+}

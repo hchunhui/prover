@@ -101,3 +101,71 @@ void equal_proof(int seq, struct lit_set *lit)
 	rep_print(")", n-1);
 	fprintf(pout, ".\nCheck (L%d).\n", seq);
 }
+
+void equal_uif_proof(int seq, struct lit_set *lit)
+{
+	int i, j, n;
+	struct pred p;
+	struct func f1, f2;
+	struct func_info fi;
+	int vec[128];
+	int h[64];
+
+	fprintf(pout, "(*uif*)\nDefinition L%d := ", seq);
+	n = bit2vec(lit->cp, lit->cn, vec);
+	for(i = 0; i < n; i++)
+	{
+		if(vec[i] < 0)
+		{
+			pred_get(&p, -vec[i]-1);
+			fprintf(pout, "horn _ _ (fun H%d:(", i);
+			print_lit(-vec[i]);
+			fprintf(pout, ") => ");
+			h[p.lv] = i;
+		}
+	}
+
+	for(i = 0; i < n; i++)
+	{
+		if(vec[i] > 0)
+		{
+			pred_get(&p, vec[i]-1);
+			func_get(&f1, &fi, p.lv);
+			func_get(&f2, &fi, p.rv);
+			break;
+		}
+	}
+
+	for(i = 0; i < fi.n; i++)
+	{
+		if(f1.arr[i] == f2.arr[i])
+			continue;
+		fprintf(pout, "(eq_ind _ (fun _x => %s", fi.name);
+		for(j = 0; j < fi.n; j++)
+		{
+			fprintf(pout, " ");
+			func_print(f1.arr[j], pout);
+		}
+		fprintf(pout, " = %s", fi.name);
+		for(j = 0; j < fi.n; j++)
+		{
+			fprintf(pout, " ");
+			if(j < i)
+				func_print(f1.arr[j], pout);
+			else if(j > i)
+				func_print(f2.arr[j], pout);
+			else
+				fprintf(pout, "_x");
+		}
+		fprintf(pout, ")");
+	}
+	fprintf(pout, "(refl_equal _)");
+	for(i = fi.n - 1; i >= 0; i--)
+	{
+		if(f1.arr[i] == f2.arr[i])
+			continue;
+		fprintf(pout, " _ H%d)", h[f1.arr[i]]);
+	}
+	rep_print(")", n-1);
+	fprintf(pout, ".\nCheck (L%d).\n", seq);
+}

@@ -7,6 +7,12 @@
 #include "dpll.h"
 #include "equal.h"
 
+#include "pred.h"
+#include "func.h"
+
+void cnf_proof(int seq, struct lit_set *lit);
+void equal_proof(int seq, struct lit_set *lit);
+void equal_uif_proof(int seq, struct lit_set *lit);
 #define MAX 256
 static struct lit_set clauses[MAX];
 static int cl_ref[MAX];
@@ -102,17 +108,19 @@ static void __cons_clause(struct etree *p)
 	}
 }
 
-static void cons_clause(struct etree *p)
+static void cons_clause(struct etree *et, struct etree *p)
 {
 	switch(p->type)
 	{
 	case T_AND:
-		cons_clause(p->l);
-		cons_clause(p->r);
+		cons_clause(et, p->l);
+		cons_clause(et, p->r);
 		break;
 	default:
 		clauses[num_clauses].cp = 0;
 		clauses[num_clauses].cn = 0;
+		clauses[num_clauses].proof = cnf_proof;
+		clauses[num_clauses].extra = et;
 		__cons_clause(p);
 		num_clauses++;
 		break;
@@ -130,7 +138,8 @@ static int add_clause(unsigned long long penv, unsigned long long nenv)
 			if(equal_test(&eq_env, i)) {
 				clauses[num_clauses].cp = 1ull << i;
 				clauses[num_clauses].cn = eq_env;
-				cl_ref[num_clauses] = 2;/*FIXME: hard wire*/
+				clauses[num_clauses].proof = equal_proof;
+				cl_ref[num_clauses] = 1;
 				return num_clauses++;
 			}
 		}
@@ -201,7 +210,6 @@ static struct dpll_tree
 }
 
 void proof_dpll_proof(
-	struct etree *et,
 	struct dpll_tree *tr,
 	struct lit_set *cl,
 	int *cl_ref,
@@ -213,14 +221,41 @@ int prove_dpll(struct etree *et)
 	unsigned long long cp, cn, mask;
 	int i;
 	struct etree *t;
+	struct func f1, f2;
+	struct func_info fi1, fi2;
+	int j, k;
 
 	t = simp_dist(et);
 	etree_dump_prefix(t, stderr);
 	fprintf(stderr, "\n");
 
 	num_clauses = 0;
-	cons_clause(t);
+	cons_clause(et, t);
 
+	for(i = 0; i < 64-1; i++)
+	{
+		func_get(&f1, &fi1, i);
+		if(fi1.n == 0 || f1.type == -1)
+			continue;
+		for(j = i+1; j < 64; j++)
+		{
+			func_get(&f2, &fi2, j);
+			if(f2.type == -1 || strcmp(fi1.name, fi2.name))
+				continue;
+			cp = 0;
+			cn = 0;
+			for(k = 0; k < fi1.n; k++)
+			{
+				if(f1.arr[k] != f2.arr[k])
+					cn |= 1ull << pred_new(P_EQU, f1.arr[k], f2.arr[k]);
+			}
+			cp = 1ull << pred_new(P_EQU, i, j);
+			clauses[num_clauses].cp = cp;
+			clauses[num_clauses].cn = cn;
+			clauses[num_clauses].proof = equal_uif_proof;
+			num_clauses++;
+		}
+	}
 	/* 消去没有使用的变量 */
 	cp = 0;
 	cn = 0;
@@ -249,7 +284,7 @@ int prove_dpll(struct etree *et)
 	if(!setjmp(env))
 	{
 		tr = __prove_dpll(0, &assign, mask);
-		proof_dpll_proof(et, tr, clauses, cl_ref, num_clauses);
+		proof_dpll_proof(tr, clauses, cl_ref, num_clauses);
 	}
 	else
 	{
