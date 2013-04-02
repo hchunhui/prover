@@ -51,7 +51,7 @@ int equal_test(unsigned long long *penv, int v)
 		{
 			pred_get(&q, i);
 			if(q.type != P_EQU) {
-				*penv &= ~(1 << i);
+				*penv &= ~(1ull << i);
 				continue;
 			}
 			set_union(fa, q.lv, q.rv);

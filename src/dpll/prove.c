@@ -119,10 +119,29 @@ static void cons_clause(struct etree *p)
 	}
 }
 
+static int add_clause(unsigned long long penv, unsigned long long nenv)
+{
+	unsigned long long eq_env, eq_v;
+	int i;
+	eq_v = nenv;
+	for(i = 0; i < 64; i++, eq_v >>= 1) {
+		if(eq_v & 1) {
+			eq_env = penv;
+			if(equal_test(&eq_env, i)) {
+				clauses[num_clauses].cp = 1ull << i;
+				clauses[num_clauses].cn = eq_env;
+				cl_ref[num_clauses] = 2;/*FIXME: hard wire*/
+				return num_clauses++;
+			}
+		}
+	}
+	return 0;
+}
+
 static struct dpll_tree
 *__prove_dpll(int lev, struct lit_set *prev, unsigned long long mask)
 {
-	unsigned long long vmask, amask, eq_env;
+	unsigned long long vmask, amask;
 	struct lit_set cur, *curr;
 	struct dpll_tree *tr;
 	int i;
@@ -153,6 +172,8 @@ static struct dpll_tree
 				goto choose_next1;
 			}
 		}
+		if(tr->ti = add_clause(curr->cp, curr->cn))
+			goto choose_next1;
 		tr->t = __prove_dpll(lev+1, curr, mask>>1);
 	choose_next1:
 		*curr = *prev;
@@ -169,15 +190,8 @@ static struct dpll_tree
 				goto choose_next2;
 			}
 		}
-		eq_env = curr->cp;
-		if(equal_test(&eq_env, lev)) {
-			clauses[num_clauses].cp = vmask;
-			clauses[num_clauses].cn = eq_env;
-			tr->fi = num_clauses;
-			cl_ref[num_clauses] = 2;/*FIXME: hard wire*/
-			num_clauses++;
+		if(tr->fi = add_clause(curr->cp, curr->cn))
 			goto choose_next2;
-		}
 		tr->f = __prove_dpll(lev+1, curr, mask>>1);
 	choose_next2:;
 	} else {
