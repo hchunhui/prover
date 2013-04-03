@@ -234,12 +234,10 @@ static void __prove_dpll_proof(struct dpll_tree *tr)
 	fprintf(pout, "))");
 }
 
-void proof_dpll_proof(struct dpll_tree *tr)
+void prove_dpll_proof(int seq, struct lit_set *cl, void *extra)
 {
-	int n;
-	n = gamma_get_num();
-	gamma_proof();
-	fprintf(pout, "Lemma L%d:False.\nProof (", n+1);
+	struct dpll_tree *tr = extra;
+	fprintf(pout, "Lemma L%d:False.\nProof (", seq);
 	__prove_dpll_proof(tr);
 	fprintf(pout, ").\n");
 }

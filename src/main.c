@@ -6,6 +6,7 @@
 #include "proof.h"
 #include "pred.h"
 #include "func.h"
+#include "dpll/gamma.h"
 
 void pred_init();
 void func_init();
@@ -23,6 +24,7 @@ int main(int argc, char *argv[])
 	pout = stdout;
 	func_init();
 	pred_init();
+	gamma_init();
 
 	/* 输入a */
 	et = parse();
@@ -63,7 +65,8 @@ int main(int argc, char *argv[])
 	fprintf(stderr, "\n");
 
 	/* 归结 */
-	seq = prove_dpll(et);
+	if(seq = prove_dpll(et))
+		gamma_proof();
 	fprintf(pout, "End prove0.\n");
 
 	if(seq)

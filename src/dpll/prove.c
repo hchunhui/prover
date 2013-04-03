@@ -13,6 +13,7 @@
 void cnf_proof(int seq, struct lit_set *lit, void *extra);
 void equal_proof(int seq, struct lit_set *lit, void *extra);
 void equal_uif_proof(int seq, struct lit_set *lit, void *extra);
+void prove_dpll_proof(int seq, struct lit_set *lit, void *extra);
 static jmp_buf env;
 
 static char *pool, *poolp;
@@ -40,6 +41,12 @@ static void pool_free()
 {
 	free(pool);
 	poolp = pool = NULL;
+}
+
+void prove_dpll_proof_free(int seq, struct lit_set *cl, void *extra)
+{
+	prove_dpll_proof(seq, cl, extra);
+	pool_free();
 }
 
 static struct etree *simp_dist1(struct etree *t1, struct etree *t2)
@@ -205,7 +212,6 @@ int prove_dpll(struct etree *et)
 	etree_dump_prefix(t, stderr);
 	fprintf(stderr, "\n");
 
-	gamma_init();
 	cons_clause(et, t);
 
 	for(i = 0; i < 64-1; i++)
@@ -259,7 +265,9 @@ int prove_dpll(struct etree *et)
 	if(!setjmp(env))
 	{
 		tr = __prove_dpll(0, &assign, mask);
-		proof_dpll_proof(tr);
+		id = gamma_add(0ull, 0ull);
+		gamma_add_proof(id, prove_dpll_proof_free, tr);
+		return id+1;
 	}
 	else
 	{
@@ -267,6 +275,4 @@ int prove_dpll(struct etree *et)
 		fprintf(stderr, "no!\n");
 		return 0;
 	}
-	pool_free();
-	return gamma_get_num()+1;
 }
