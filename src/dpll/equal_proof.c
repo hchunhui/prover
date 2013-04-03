@@ -67,7 +67,7 @@ static void set_union(int idx, int idy, int hseq)
 	fprintf(pout, " in ");
 }
 
-void equal_proof(int seq, struct lit_set *lit)
+void equal_proof(int seq, struct lit_set *lit, void *extra)
 {
 	int i, n;
 	struct pred p;

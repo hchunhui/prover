@@ -7,7 +7,7 @@ int gamma_search(unsigned long long cp,
 int gamma_add(unsigned long long cp,
 	      unsigned long long cn);
 void gamma_add_proof(int id,
-		     void (*proof)(int seq, struct lit_set *lit),
+		     void (*proof)(int seq, struct lit_set *lit, void *extra),
 		     void *extra);
 void gamma_ref(int id);
 int gamma_match(unsigned long long cpmask,

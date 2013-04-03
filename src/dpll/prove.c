@@ -10,9 +10,9 @@
 #include "pred.h"
 #include "func.h"
 
-void cnf_proof(int seq, struct lit_set *lit);
-void equal_proof(int seq, struct lit_set *lit);
-void equal_uif_proof(int seq, struct lit_set *lit);
+void cnf_proof(int seq, struct lit_set *lit, void *extra);
+void equal_proof(int seq, struct lit_set *lit, void *extra);
+void equal_uif_proof(int seq, struct lit_set *lit, void *extra);
 static jmp_buf env;
 
 static char *pool, *poolp;

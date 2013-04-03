@@ -2,7 +2,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #define MAX 1024
-static struct lit_set gamma[MAX];
+
+struct gamma_list
+{
+	struct lit_set lit;
+	int ref;
+	void (*proof)(int seq, struct lit_set *lit, void *extra);
+	void *extra;
+};
+
+static struct gamma_list gamma[MAX];
 static int num_gamma;
 
 int gamma_search(unsigned long long cp,
@@ -10,8 +19,8 @@ int gamma_search(unsigned long long cp,
 {
 	int i;
 	for(i = 0; i < num_gamma; i++)
-		if(gamma[i].cp == cp &&
-		   gamma[i].cn == cn)
+		if(gamma[i].lit.cp == cp &&
+		   gamma[i].lit.cn == cn)
 			return i;
 	return -1;
 }
@@ -29,8 +38,8 @@ int gamma_add(unsigned long long cp,
 		exit(1);
 	}
 	id = num_gamma;
-	gamma[id].cp = cp;
-	gamma[id].cn = cn;
+	gamma[id].lit.cp = cp;
+	gamma[id].lit.cn = cn;
 	gamma[id].proof = NULL;
 	gamma[id].extra = NULL;
 	gamma[id].ref = 0;
@@ -39,7 +48,7 @@ int gamma_add(unsigned long long cp,
 }
 
 void gamma_add_proof(int id,
-		     void (*proof)(int seq, struct lit_set *lit),
+		     void (*proof)(int seq, struct lit_set *lit, void *extra),
 		     void *extra)
 {
 	gamma[id].proof = proof;
@@ -57,8 +66,8 @@ int gamma_match(unsigned long long cpmask,
 	int i;
 	for(i = 0; i < num_gamma; i++)
 	{
-		if((gamma[i].cp & cpmask) == 0ull &&
-		   (gamma[i].cn & cnmask) == 0ull)
+		if((gamma[i].lit.cp & cpmask) == 0ull &&
+		   (gamma[i].lit.cn & cnmask) == 0ull)
 			return i;
 	}
 	return -1;
@@ -66,7 +75,7 @@ int gamma_match(unsigned long long cpmask,
 
 void gamma_get(int id, struct lit_set *lit)
 {
-	*lit = gamma[id];
+	*lit = gamma[id].lit;
 }
 
 int gamma_get_num()
@@ -79,7 +88,7 @@ void gamma_proof()
 	int i;
 	for(i = 0; i < num_gamma; i++)
 		if(gamma[i].proof)
-			gamma[i].proof(i+1, gamma + i);
+			gamma[i].proof(i+1, &gamma[i].lit, gamma[i].extra);
 }
 
 void gamma_init()

@@ -6,12 +6,6 @@
 #include "proof_utils.h"
 #include "gamma.h"
 
-struct __internal
-{
-	unsigned long long cp;
-	unsigned long long cn;
-};
-
 static int or_merge(int *vec1, int n1, int *vec2, int n2, int *rank, int *vec)
 {
 	int i;
@@ -104,7 +98,7 @@ static void or_trans(int *vec1, int n1, int *vec2, int n2)
 	fprintf(pout, ") H))\n");
 }
 
-static int __goal_include(struct etree *p, struct __internal *goal)
+static int __goal_include(struct etree *p, struct lit_set *goal)
 {
 	switch(p->type)
 	{
@@ -121,7 +115,7 @@ static int __goal_include(struct etree *p, struct __internal *goal)
 	return 0;
 }
 
-static int __proof_dist(struct etree *p, int from, int hc, struct __internal *goal)
+static int __proof_dist(struct etree *p, int from, int hc, struct lit_set *goal)
 {
 	int thc;
 	int vec1[128], vec2[1], vec[128];
@@ -191,10 +185,10 @@ static void resolve(int *vec, int n)
 }
 
 
-void cnf_proof(int seq, struct lit_set *cl)
+void cnf_proof(int seq, struct lit_set *cl, void *extra)
 {
-	struct __internal goal;
-	struct etree *et = cl->extra;
+	struct lit_set goal;
+	struct etree *et = extra;
 	goal.cp = cl->cp;
 	goal.cn = cl->cn;
 	fprintf(pout, "Definition L%d:=((fun (H0:", seq);
