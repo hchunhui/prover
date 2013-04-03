@@ -59,7 +59,8 @@ static int equal_closure(int *fa)
 				if(!set_find(fa, f1.arr[k], f2.arr[k]))
 					break;
 			if(k == fi1.n)
-				flag = set_union(fa, i, j);
+				if(set_union(fa, i, j))
+					flag = 1;
 		}
 	}
 	return flag;

@@ -57,7 +57,7 @@ static int add_clause(unsigned long long penv, unsigned long long nenv)
 			eq_env = penv;
 			if(equal_test(&eq_env, i)) {
 				id = gamma_add(1ull<<i, eq_env);
-				//gamma_add_proof(id, equal_proof, NULL);
+				gamma_add_proof(id, equal_proof, NULL);
 				gamma_ref(id);
 				return id;
 			}
