@@ -6,17 +6,13 @@
 #include "proof.h"
 #include "dpll.h"
 #include "equal.h"
-
+#include "gamma.h"
 #include "pred.h"
 #include "func.h"
 
 void cnf_proof(int seq, struct lit_set *lit);
 void equal_proof(int seq, struct lit_set *lit);
 void equal_uif_proof(int seq, struct lit_set *lit);
-#define MAX 256
-static struct lit_set clauses[MAX];
-static int cl_ref[MAX];
-static int num_clauses;
 static jmp_buf env;
 
 static char *pool, *poolp;
@@ -91,25 +87,29 @@ static struct etree *simp_dist(struct etree *p)
 	return NULL;
 }
 
-static void __cons_clause(struct etree *p)
+static void __cons_clause(struct etree *p,
+			  unsigned long long *pcp,
+			  unsigned long long *pcn)
 {
 	switch(p->type)
 	{
 	case T_PROP:
 		if(p->val > 0)
-			clauses[num_clauses].cp |= 1ull << (p->val-1);
+			*pcp |= 1ull << (p->val-1);
 		else
-			clauses[num_clauses].cn |= 1ull << (-p->val-1);
+			*pcn |= 1ull << (-p->val-1);
 		break;
 	case T_OR:
-		__cons_clause(p->l);
-		__cons_clause(p->r);
+		__cons_clause(p->l, pcp, pcn);
+		__cons_clause(p->r, pcp, pcn);
 		break;
 	}
 }
 
 static void cons_clause(struct etree *et, struct etree *p)
 {
+	unsigned long long cp, cn;
+	int id;
 	switch(p->type)
 	{
 	case T_AND:
@@ -117,12 +117,11 @@ static void cons_clause(struct etree *et, struct etree *p)
 		cons_clause(et, p->r);
 		break;
 	default:
-		clauses[num_clauses].cp = 0;
-		clauses[num_clauses].cn = 0;
-		clauses[num_clauses].proof = cnf_proof;
-		clauses[num_clauses].extra = et;
-		__cons_clause(p);
-		num_clauses++;
+		cp = 0ull;
+		cn = 0ull;
+		__cons_clause(p, &cp, &cn);
+		id = gamma_add(cp, cn);
+		gamma_add_proof(id, cnf_proof, et);
 		break;
 	}
 }
@@ -131,16 +130,16 @@ static int add_clause(unsigned long long penv, unsigned long long nenv)
 {
 	unsigned long long eq_env, eq_v;
 	int i;
+	int id;
 	eq_v = nenv;
 	for(i = 0; i < 64; i++, eq_v >>= 1) {
 		if(eq_v & 1) {
 			eq_env = penv;
 			if(equal_test(&eq_env, i)) {
-				clauses[num_clauses].cp = 1ull << i;
-				clauses[num_clauses].cn = eq_env;
-				clauses[num_clauses].proof = equal_proof;
-				cl_ref[num_clauses] = 1;
-				return num_clauses++;
+				id = gamma_add(1ull<<i, eq_env);
+				gamma_add_proof(id, equal_proof, NULL);
+				gamma_ref(id);
+				return id;
 			}
 		}
 	}
@@ -153,7 +152,6 @@ static struct dpll_tree
 	unsigned long long vmask, amask;
 	struct lit_set cur, *curr;
 	struct dpll_tree *tr;
-	int i;
 	curr = &cur;
 	*curr = *prev;
 	if(!mask) {
@@ -168,55 +166,31 @@ static struct dpll_tree
 		tr->t = NULL;
 		tr->f = NULL;
 		tr->lev = lev;
+
 		curr->cp |= vmask;
-		for(i = 0; i < num_clauses; i++)
-		{
-			if((clauses[i].cp & curr->cp) ||
-			   (clauses[i].cn & curr->cn))
-				continue;
-			if((clauses[i].cp & (~curr->cn)) == 0ull &&
-			   (clauses[i].cn & (~curr->cp)) == 0ull) {
-				tr->ti = i;
-				cl_ref[i] = 1;
-				goto choose_next1;
-			}
-		}
-		if(tr->ti = add_clause(curr->cp, curr->cn))
-			goto choose_next1;
-		tr->t = __prove_dpll(lev+1, curr, mask>>1);
-	choose_next1:
+		if((tr->ti = gamma_match(~curr->cn, ~curr->cp)) != -1)
+			gamma_ref(tr->ti);
+	        else if(!(tr->ti = add_clause(curr->cp, curr->cn)))
+			tr->t = __prove_dpll(lev+1, curr, mask>>1);
+
 		*curr = *prev;
 		curr->cn |= vmask;
-		for(i = 0; i < num_clauses; i++)
-		{
-			if((clauses[i].cp & curr->cp) ||
-			   (clauses[i].cn & curr->cn))
-				continue;
-			if((clauses[i].cp & (~curr->cn)) == 0ull &&
-			   (clauses[i].cn & (~curr->cp)) == 0ull) {
-				tr->fi = i;
-				cl_ref[i] = 1;
-				goto choose_next2;
-			}
-		}
-		if(tr->fi = add_clause(curr->cp, curr->cn))
-			goto choose_next2;
-		tr->f = __prove_dpll(lev+1, curr, mask>>1);
-	choose_next2:;
+		if((tr->fi = gamma_match(~curr->cn, ~curr->cp)) != -1)
+			gamma_ref(tr->fi);
+		else if(!(tr->fi = add_clause(curr->cp, curr->cn)))
+			tr->f = __prove_dpll(lev+1, curr, mask>>1);
 	} else {
 		return __prove_dpll(lev+1, curr, mask>>1);
 	}
 	return tr;
 }
 
-void proof_dpll_proof(
-	struct dpll_tree *tr,
-	struct lit_set *cl,
-	int *cl_ref,
-	int n);
+void proof_dpll_proof(struct dpll_tree *tr);
+
 int prove_dpll(struct etree *et)
 {
 	struct lit_set assign;
+	struct lit_set lit;
 	struct dpll_tree *tr;
 	unsigned long long cp, cn, mask;
 	int i;
@@ -224,12 +198,14 @@ int prove_dpll(struct etree *et)
 	struct func f1, f2;
 	struct func_info fi1, fi2;
 	int j, k;
+	int id;
+	int n;
 
 	t = simp_dist(et);
 	etree_dump_prefix(t, stderr);
 	fprintf(stderr, "\n");
 
-	num_clauses = 0;
+	gamma_init();
 	cons_clause(et, t);
 
 	for(i = 0; i < 64-1; i++)
@@ -250,19 +226,19 @@ int prove_dpll(struct etree *et)
 					cn |= 1ull << pred_new(P_EQU, f1.arr[k], f2.arr[k]);
 			}
 			cp = 1ull << pred_new(P_EQU, i, j);
-			clauses[num_clauses].cp = cp;
-			clauses[num_clauses].cn = cn;
-			clauses[num_clauses].proof = equal_uif_proof;
-			num_clauses++;
+			id = gamma_add(cp, cn);
+			gamma_add_proof(id, equal_uif_proof, NULL);
 		}
 	}
 	/* 消去没有使用的变量 */
 	cp = 0;
 	cn = 0;
-	for(i = 0; i < num_clauses; i++)
+	n = gamma_get_num();
+	for(i = 0; i < n; i++)
 	{
-		cp |= clauses[i].cp;
-		cn |= clauses[i].cn;
+		gamma_get(i, &lit);
+		cp |= lit.cp;
+		cn |= lit.cn;
 	}
 	mask = cp | cn;
 	/*assign.cp = cp & (cp ^ cn);
@@ -275,16 +251,15 @@ int prove_dpll(struct etree *et)
 	assign.cp = 0;
 	assign.cn = 0;
 
-	fprintf(stderr, "num:%d\n", num_clauses);
+	fprintf(stderr, "num:%d\n", n);
 	fprintf(stderr, "initial assign %016llx %016llx mask %016llx\n", assign.cp, assign.cn, mask);
 
 	/* 搜索并证明 */
-	memset(cl_ref, 0, sizeof(cl_ref));
 	pool_init();
 	if(!setjmp(env))
 	{
 		tr = __prove_dpll(0, &assign, mask);
-		proof_dpll_proof(tr, clauses, cl_ref, num_clauses);
+		proof_dpll_proof(tr);
 	}
 	else
 	{
@@ -293,5 +268,5 @@ int prove_dpll(struct etree *et)
 		return 0;
 	}
 	pool_free();
-	return num_clauses+1;
+	return gamma_get_num()+1;
 }

@@ -4,6 +4,7 @@
 #include "proof.h"
 #include "dpll.h"
 #include "proof_utils.h"
+#include "gamma.h"
 
 struct __internal
 {
@@ -216,38 +217,35 @@ static void define_theorem(
 	fprintf(pout, "L%d)", hseq);
 }
 
-static void __prove_dpll_proof(struct dpll_tree *tr, struct lit_set *cl)
+static void __prove_dpll_proof(struct dpll_tree *tr)
 {
+	struct lit_set lit;
 	int lev = tr->lev;
 	fprintf(pout, "(fun (F%d:~", lev);print_lit(lev+1);
 	fprintf(pout, ") => (");
-	if(!tr->f)
-		define_theorem(cl[tr->fi].cp, cl[tr->fi].cn, tr->fi+1);
-	else
-		__prove_dpll_proof(tr->f, cl);
+	if(!tr->f) {
+		gamma_get(tr->fi, &lit);
+		define_theorem(lit.cp, lit.cn, tr->fi+1);
+	} else {
+		__prove_dpll_proof(tr->f);
+	}
 	fprintf(pout, ")) (fun (T%d:", lev);print_lit(lev+1);
 	fprintf(pout, ") => (");
-	if(!tr->t)
-		define_theorem(cl[tr->ti].cp, cl[tr->ti].cn, tr->ti+1);
-	else
-		__prove_dpll_proof(tr->t, cl);
+	if(!tr->t) {
+		gamma_get(tr->ti, &lit);
+		define_theorem(lit.cp, lit.cn, tr->ti+1);
+	} else {
+		__prove_dpll_proof(tr->t);
+	}
 	fprintf(pout, "))");
 }
 
-void proof_dpll_proof(
-	struct dpll_tree *tr,
-	struct lit_set *cl,
-	int *cl_ref,
-	int n)
+void proof_dpll_proof(struct dpll_tree *tr)
 {
-	int i;
-	for(i = 0; i < n; i++) {
-		if(cl_ref[i] == 0)
-			continue;
-		if(cl_ref[i] == 1)
-			cl[i].proof(i+1, cl + i);
-	}
+	int n;
+	n = gamma_get_num();
+	gamma_proof();
 	fprintf(pout, "Lemma L%d:False.\nProof (", n+1);
-	__prove_dpll_proof(tr, cl);
+	__prove_dpll_proof(tr);
 	fprintf(pout, ").\n");
 }

@@ -12,6 +12,7 @@ struct lit_set
 {
 	unsigned long long cp;
 	unsigned long long cn;
+	int ref;
 	void (*proof)(int seq, struct lit_set *lit);
 	void *extra;
 };
