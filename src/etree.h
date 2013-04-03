@@ -1,5 +1,6 @@
 #ifndef _ETREE_H_
 #define _ETREE_H_
+#include <stdio.h>
 #include <stdlib.h>
 
 struct etree

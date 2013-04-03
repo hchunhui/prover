@@ -19,4 +19,5 @@ int pred_new(int type, int lv, int rv);
 void prop_print(int id, FILE *fp);
 void prop_decl(FILE *fp);
 void pred_get(struct pred *p, int v);
+void pred_init();
 #endif /* _PRED_H_ */

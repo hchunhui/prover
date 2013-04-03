@@ -6,13 +6,11 @@
 #include "proof.h"
 #include "pred.h"
 #include "func.h"
+#include "dpll/dpll.h"
 #include "dpll/gamma.h"
+#include "dpll/cnf.h"
 
-void pred_init();
-void func_init();
 struct etree *parse();
-int prove_naive(struct etree *et);
-int prove_dpll(struct etree *et);
 
 /* global variable */
 FILE *pout;
@@ -64,8 +62,10 @@ int main(int argc, char *argv[])
 	etree_dump_prefix(et, stderr);
 	fprintf(stderr, "\n");
 
+	cnf_gen_gamma(et);
+
 	/* 归结 */
-	if(seq = prove_dpll(et))
+	if(seq = prove_dpll())
 		gamma_proof();
 	fprintf(pout, "End prove0.\n");
 
