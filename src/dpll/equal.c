@@ -1,5 +1,7 @@
 #include "equal.h"
 #include "pred.h"
+#include "func.h"
+#include <string.h>
 
 static int get_fa(int *fa, int v)
 {
@@ -24,14 +26,43 @@ static int set_find(int *fa, int idx, int idy)
 	return fx == fy;
 }
 
-static void set_union(int *fa, int idx, int idy)
+static int set_union(int *fa, int idx, int idy)
 {
 	int fx, fy;
 	fx = get_fa(fa, idx);
 	fy = get_fa(fa, idy);
 	if(fy != fx) {
 		fa[fx]=fy;
+		return 1;
 	}
+	return 0;
+}
+
+static int equal_closure(int *fa)
+{
+	int i, j, k;
+	struct func f1, f2;
+	struct func_info fi1, fi2;
+	int flag;
+	flag = 0;
+	for(i = 0; i < 64-1; i++)
+	{
+		func_get(&f1, &fi1, i);
+		if(fi1.n == 0 || f1.type == -1)
+			continue;
+		for(j = i+1; j < 64; j++)
+		{
+			func_get(&f2, &fi2, j);
+			if(f2.type == -1 || strcmp(fi1.name, fi2.name))
+				continue;
+			for(k = 0; k < fi1.n; k++)
+				if(!set_find(fa, f1.arr[k], f2.arr[k]))
+					break;
+			if(k == fi1.n)
+				flag = set_union(fa, i, j);
+		}
+	}
+	return flag;
 }
 
 int equal_test(unsigned long long *penv, int v)
@@ -57,9 +88,10 @@ int equal_test(unsigned long long *penv, int v)
 			set_union(fa, q.lv, q.rv);
 		}
 	}
-	if(set_find(fa, p.lv, p.rv))
-	{
-		return 1;
-	}
+
+	do {
+		if(set_find(fa, p.lv, p.rv))
+			return 1;
+	} while(equal_closure(fa));
 	return 0;
 }

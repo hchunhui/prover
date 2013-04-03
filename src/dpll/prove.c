@@ -7,8 +7,6 @@
 #include "dpll.h"
 #include "equal.h"
 #include "gamma.h"
-#include "pred.h"
-#include "func.h"
 
 void equal_proof(int seq, struct lit_set *lit, void *extra);
 void equal_uif_proof(int seq, struct lit_set *lit, void *extra);
@@ -59,7 +57,7 @@ static int add_clause(unsigned long long penv, unsigned long long nenv)
 			eq_env = penv;
 			if(equal_test(&eq_env, i)) {
 				id = gamma_add(1ull<<i, eq_env);
-				gamma_add_proof(id, equal_proof, NULL);
+				//gamma_add_proof(id, equal_proof, NULL);
 				gamma_ref(id);
 				return id;
 			}
@@ -114,34 +112,9 @@ int prove_dpll()
 	struct dpll_tree *tr;
 	unsigned long long cp, cn, mask;
 	int i;
-	struct func f1, f2;
-	struct func_info fi1, fi2;
-	int j, k;
 	int id;
 	int n;
 
-	for(i = 0; i < 64-1; i++)
-	{
-		func_get(&f1, &fi1, i);
-		if(fi1.n == 0 || f1.type == -1)
-			continue;
-		for(j = i+1; j < 64; j++)
-		{
-			func_get(&f2, &fi2, j);
-			if(f2.type == -1 || strcmp(fi1.name, fi2.name))
-				continue;
-			cp = 0;
-			cn = 0;
-			for(k = 0; k < fi1.n; k++)
-			{
-				if(f1.arr[k] != f2.arr[k])
-					cn |= 1ull << pred_new(P_EQU, f1.arr[k], f2.arr[k]);
-			}
-			cp = 1ull << pred_new(P_EQU, i, j);
-			id = gamma_add(cp, cn);
-			gamma_add_proof(id, equal_uif_proof, NULL);
-		}
-	}
 	/* 消去没有使用的变量 */
 	cp = 0;
 	cn = 0;
@@ -153,13 +126,13 @@ int prove_dpll()
 		cn |= lit.cn;
 	}
 	mask = cp | cn;
-	/*assign.cp = cp & (cp ^ cn);
+	assign.cp = cp & (cp ^ cn);
 	assign.cn = cn & (cp ^ cn);
-	for(i = 0; i < num_clauses; i++)
+	for(i = 0; i < n; i++)
 	{
 		cp &= ~assign.cp;
 		cn &= ~assign.cn;
-		}*/
+	}
 	assign.cp = 0;
 	assign.cn = 0;
 
