@@ -6,9 +6,9 @@
 #include "proof.h"
 #include "pred.h"
 #include "func.h"
-#include "dpll/dpll.h"
-#include "dpll/gamma.h"
-#include "dpll/cnf.h"
+#include "dpll.h"
+#include "gamma.h"
+#include "cnf.h"
 
 struct etree *parse();
 
