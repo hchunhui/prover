@@ -1,6 +1,9 @@
-#include "gamma.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "gamma.h"
+#include "proof.h"
+#include "proof_utils.h"
+
 #define MAX 1024
 
 struct gamma_list
@@ -85,10 +88,22 @@ int gamma_get_num()
 
 void gamma_proof()
 {
-	int i;
+	int i, n;
+	int vec[128];
 	for(i = 0; i < num_gamma; i++)
+	{
+		if(!gamma[i].ref)
+			continue;
 		if(gamma[i].proof)
 			gamma[i].proof(i+1, &gamma[i].lit, gamma[i].extra);
+		else
+		{
+			fprintf(pout, "Lemma L%d:(", i+1);
+			n = bit2vec(gamma[i].lit.cp, gamma[i].lit.cn, vec);
+			print_vec(vec, n);
+			fprintf(pout, ").\nAdmitted.\nCheck L%d.\n", i+1);
+		}
+	}
 }
 
 void gamma_init()

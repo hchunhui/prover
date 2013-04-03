@@ -173,6 +173,7 @@ int prove_dpll()
 		tr = __prove_dpll(0, &assign, mask);
 		id = gamma_add(0ull, 0ull);
 		gamma_add_proof(id, prove_dpll_proof_free, tr);
+		gamma_ref(id);
 		return id+1;
 	}
 	else
