@@ -3,7 +3,8 @@
 *.x
 *.vo
 *.glob
-test/*/*.v
+*.v
+!src/lemma.v
 build
 /autom4te.cache
 stamp-h1
@@ -26,4 +27,5 @@ libtool
 *.lex.c
 *.tab.c
 *.tab.h
+core
 mytest
