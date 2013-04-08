@@ -23,28 +23,16 @@ A[0-9]+			{
 	yylval.ival = val;
 	return(PROP);
 }
-c[0-9]+			{
-	int val;
-	sscanf(yytext, "c%d", &val);
-	if(val >= 4)
-	       exit(1);
-	yylval.ival = val;
+[a-z][a-z0-9]*|\+|\.		{
+	yylval.sval = strdup(yytext);
 	return(FUNC);
 }
-f[0-9]+			{
-	int val;
-	sscanf(yytext, "f%d", &val);
-	if(val >= 4)
-	       exit(1);
-	yylval.ival = 4 + val;
-	return(FUNC);
-}
-g[0-9]+			{
-	int val;
-	sscanf(yytext, "g%d", &val);
-	if(val >= 4)
-	       exit(1);
-	yylval.ival = 8 + val;
+
+\-?[0-9]+		{
+	char num[16];
+	strcpy(num, "@");
+	strcat(num, yytext);
+	yylval.sval = strdup(num);
 	return(FUNC);
 }
 
@@ -55,6 +43,7 @@ g[0-9]+			{
 "("			{ return('('); }
 ")"			{ return(')'); }
 "="			{ return(EQU); }
+"<="			{ return(LE); }
 ","			{ return(','); }
 
 [ \v\f]			{  }

@@ -20,5 +20,6 @@ int func_new(int type, int arg1, int arg2);
 void func_decl(FILE *fp);
 void func_get(struct func *f, struct func_info *fi, int v);
 void func_init();
-
+int func_info_new(char *name, int n);
+int func_info_search(char *name, int n);
 #endif /* _FUNC_H_ */

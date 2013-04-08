@@ -13,10 +13,11 @@ void yyerror(char* msg)
 
 %locations
 
-%token PROP IMPL OR AND NOT EQU FUNC EOL
+%token PROP IMPL OR AND NOT EQU LE FUNC EOL
 %union {
 	int ival;
 	struct etree *tval;
+	char *sval;
 }
 
 %start main
@@ -26,7 +27,7 @@ void yyerror(char* msg)
 %nonassoc NOT
 
 %type <ival> PROP
-%type <ival> FUNC
+%type <sval> FUNC
 %type <ival> func
 %type <ival> func_arg
 %type <tval> expr
@@ -64,16 +65,24 @@ expr
 	{
 		$$ = etree_mknode(T_PROP, 1+pred_new(P_EQU, $1, $3), NULL, NULL);
 	}
+	| func LE func
+	{
+		$$ = etree_mknode(T_PROP, 1+pred_new(P_LE, $1, $3), NULL, NULL);
+	}
 	;
 
 func
 	: FUNC
 	{
-		$$ = func_new($1, -1, -1);
+		int type = func_info_new($1, 0);
+		$$ = func_new(type, -1, -1);
+		free($1);
 	}
 	| FUNC '(' func_arg ')'
 	{
-		$$ = func_new($1, $3 & 0xffff, $3 >> 16);
+		int type = func_info_new($1, ($3>>16) == -1 ? 1 : 2);
+		$$ = func_new(type, $3 & 0xffff, $3 >> 16);
+		free($1);
 	}
 	;
 

@@ -59,15 +59,21 @@ int prop_new(int i)
 
 void prop_print(int id, FILE *fp)
 {
+	char *pred;
 	switch(pred_tab[id].type)
 	{
 	case P_ATOM:
 		fprintf(fp, "%s", atom_name[id]);
 		break;
 	case P_EQU:
+		pred = "=";
+		goto comm;
+	case P_LE:
+		pred = "<=";
+	comm:
 		fprintf(fp, "(");
 		func_print(pred_tab[id].lv, fp);
-		fprintf(fp, "=");
+		fprintf(fp, pred);
 		func_print(pred_tab[id].rv, fp);
 		fprintf(fp, ")");
 		break;
