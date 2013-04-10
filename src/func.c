@@ -23,7 +23,14 @@ void func_print(int id, FILE *fp)
 	int fid;
 	fid = func_tab[id].type;
 	fprintf(fp,"(");
-	fprintf(fp, "%s", func_info_tab[fid].name);
+	if(func_info_tab[fid].name[0] == '+')
+		fprintf(fp, "Zplus");
+	else if(func_info_tab[fid].name[0] == '.')
+		fprintf(fp, "Zmult");
+	else if(func_info_tab[fid].name[0] != '@')
+		fprintf(fp, "%s", func_info_tab[fid].name);
+	else
+		fprintf(fp, "%s", func_info_tab[fid].name+1);
 	switch(func_info_tab[fid].n)
 	{
 	case 0:
@@ -112,11 +119,14 @@ void func_decl(FILE *fp)
 	int i, j;
 	for(i = 0; i < 64; i++)
 	{
-		if(func_info_tab[i].name[0])
+		if(func_info_tab[i].name[0] &&
+		   func_info_tab[i].name[0] != '@' &&
+		   func_info_tab[i].name[0] != '+' &&
+		   func_info_tab[i].name[0] != '.')
 		{
-			fprintf(fp, "Variable %s:Set", func_info_tab[i].name);
+			fprintf(fp, "Variable %s:Z", func_info_tab[i].name);
 			for(j = 0; j < func_info_tab[i].n;j++)
-				fprintf(fp, "->Set");
+				fprintf(fp, "->Z");
 			fprintf(fp, ".\n");
 		}
 	}

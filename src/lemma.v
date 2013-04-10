@@ -1,4 +1,6 @@
 Require Import Classical.
+Require Import ZArith.
+Open Scope Z_scope.
 
 Lemma imp_or: forall P Q:Prop, (P->Q)<->(~P\/Q).
 unfold iff.

@@ -9,6 +9,7 @@
 #include "gamma.h"
 
 void equal_proof(int seq, struct lit_set *lit, void *extra);
+int arith_test(unsigned long long penv, unsigned long long nenv);
 
 static jmp_buf env;
 
@@ -62,7 +63,7 @@ static int add_clause(unsigned long long penv, unsigned long long nenv)
 			}
 		}
 	}
-	return 0;
+	return arith_test(penv, nenv);
 }
 
 static struct dpll_tree
