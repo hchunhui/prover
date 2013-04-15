@@ -65,33 +65,47 @@ static int equal_closure(int *fa)
 	return flag;
 }
 
-int equal_test(unsigned long long *penv, int v)
+int equal_test(LitSet *env)
 {
-	int i;
-	struct pred p, q;
-	unsigned long long env;
+	int i, id;
+	struct pred q;
+	LitSet *ls, *ls1;
 	int fa[64];
-	env = *penv;
-	pred_get(&p, v);
-	if(p.type != P_EQU)
-		return 0;
+	int ret;
+	ret = 0;
 	set_init(fa);
-	for(i = 0; i < 64; i++, env >>= 1)
+	ls = litset_new();
+	for(i = 0; i < env->n; i++)
 	{
-		if(env & 1)
-		{
-			pred_get(&q, i);
-			if(q.type != P_EQU) {
-				*penv &= ~(1ull << i);
-				continue;
-			}
-			set_union(fa, q.lv, q.rv);
-		}
+		if(env->mem[i].neg)
+			continue;
+		pred_get(&q, env->mem[i].id);
+		if(q.type != P_EQU)
+			continue;
+		set_union(fa, q.lv, q.rv);
+		litset_add(ls, lit_make(1, env->mem[i].id));
 	}
 
-	do {
-		if(set_find(fa, p.lv, p.rv))
-			return 1;
-	} while(equal_closure(fa));
-	return 0;
+	for(i = 0; i < env->n; i++)
+	{
+		if(!env->mem[i].neg)
+			continue;
+		pred_get(&q, env->mem[i].id);
+		if(q.type != P_EQU)
+			continue;
+		do {
+			if(set_find(fa, q.lv, q.rv))
+			{
+				ls1 = litset_dup(ls);
+				litset_add(ls1, lit_make(0, env->mem[i].id));
+				id = gamma_add(ls1);
+				gamma_add_proof(id, equal_proof, NULL);
+				ret = 1;
+				return ret;
+				break;
+			}
+		} while(equal_closure(fa));
+	}
+	litset_del(ls);
+	return ret;
 }

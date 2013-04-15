@@ -46,13 +46,7 @@ void prove_dpll_proof_free(int seq, LitSet *cl, void *extra)
 
 static int add_clause(LitSet *env)
 {
-	int id;
-	//if(equal_test(env)) {
-		//id = gamma_add(...);
-		//gamma_add_proof(id, equal_proof, NULL);
-		//gamma_ref(id);
-		//return id;
-		//}
+	return equal_test(env);
 	//return arith_test(env);
 	return 0;
 }
@@ -76,18 +70,22 @@ static struct dpll_tree
 
 	casgn = litset_dup(pasgn);
 	litset_add(casgn, lit_make(0, cls->mem[i].id));
-	if((tr->ti = gamma_match(casgn)) != -1)
-		gamma_ref(tr->ti);
-	else if(!(tr->ti = add_clause(casgn)))
-		tr->t = __prove_dpll(i+1, casgn, cls);
+	if((tr->ti = gamma_match(casgn)) == -1)
+	{
+		if(!add_clause(casgn) ||
+		   (tr->ti = gamma_match(casgn)) == -1)
+			tr->t = __prove_dpll(i+1, casgn, cls);
+	}
 	litset_del(casgn);
 
 	casgn = litset_dup(pasgn);
 	litset_add(casgn, lit_make(1, cls->mem[i].id));
-	if((tr->fi = gamma_match(casgn)) != -1)
-		gamma_ref(tr->fi);
-	else if(!(tr->fi = add_clause(casgn)))
-		tr->f = __prove_dpll(i+1, casgn, cls);
+	if((tr->fi = gamma_match(casgn)) == -1)
+	{
+		if(!add_clause(casgn) ||
+		   (tr->fi = gamma_match(casgn)) == -1)
+			tr->f = __prove_dpll(i+1, casgn, cls);
+	}
 	litset_del(casgn);
 	return tr;
 }

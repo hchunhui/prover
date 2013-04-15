@@ -173,7 +173,7 @@ void equal_proof(int seq, LitSet *ls, void *extra)
 		{
 			pred_get(&p, ls->mem[i].id);
 			fprintf(pout, "horn _ _ (fun H%d:(", count++);
-			lit_print(ls->mem[i], pout);
+			lit_print(lit_make(0, ls->mem[i].id), pout);
 			fprintf(pout, ") => ");
 			set_union_proof(p.lv, p.rv, count-1);
 		}

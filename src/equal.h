@@ -1,6 +1,7 @@
 #ifndef _EQUAL_H_
 #define _EQUAL_H_
-
-int equal_test(unsigned long long *penv, int v);
+#include "comm.h"
+int equal_test(LitSet *env);
+void equal_proof(int seq, LitSet *ls, void *extra);
 
 #endif /* _EQUAL_H_ */

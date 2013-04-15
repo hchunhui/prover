@@ -130,6 +130,7 @@ int gamma_match(LitSet *ls)
 		if(flag)
 			continue;
 		//fprintf(stderr, "ok\n");
+		gamma_ref(i);
 		return i;
 	}
 	//fprintf(stderr, "fail\n");
