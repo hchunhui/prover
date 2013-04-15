@@ -247,6 +247,11 @@ int simplex_solve(struct simplex_ctx *ctx)
 				break;
 			}
 			temp = XINT(ctx->nl[j]);
+			if(Qsign(ctx->t[i][j]) > 0)
+			{
+				ctx->av[j] = Qsub(ctx->av[j], diff);
+				break;
+			}
 			theta = Qsub(ctx->bv[temp], ctx->av[j]);
 			if(Qsign(Qsub(Qmul(ctx->t[i][j], theta), diff)) >= 0)
 			{

@@ -5,9 +5,7 @@
 #include "comm.h"
 #include "dpll.h"
 #include "equal.h"
-
-void equal_proof(int seq, LitSet *lit, void *extra);
-int arith_test(LitSet *env);
+#include "arith.h"
 
 static jmp_buf env;
 
