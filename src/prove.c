@@ -112,9 +112,9 @@ int prove_dpll()
 
 	/* 搜索并证明 */
 	pool_init();
+	asgn = litset_new();
 	if(!setjmp(env))
 	{
-		asgn = litset_new();
 		tr = __prove_dpll(0, asgn, cls);
 		id = gamma_add(asgn);
 		gamma_add_proof(id, prove_dpll_proof_free, tr);
