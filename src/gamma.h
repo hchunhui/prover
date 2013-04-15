@@ -3,7 +3,6 @@
 
 int gamma_search(LitSet *ls);
 int gamma_add(LitSet *ls);
-int gamma_add_swap(LitSet *ls);
 void gamma_add_proof(int id,
 		     void (*proof)(int seq, LitSet *lit, void *extra),
 		     void *extra);

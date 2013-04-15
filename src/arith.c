@@ -500,9 +500,11 @@ int do_fix_solve(struct simplex_ctx *ctx, int *fix, int i)
 
 int arith_test(LitSet *ls)
 {
+	int i;
 	int m, n;
 	int id;
 	int varmap[64];
+	LitSet *ls1;
 	struct simplex_ctx *ctx;
 	memset(varmap, -1, sizeof(varmap));
 	m = count_m(ls);
@@ -513,10 +515,11 @@ int arith_test(LitSet *ls)
 	if(do_fix_solve(ctx, fix, 0) == 0)
 	{
 		fprintf(stderr, "unsat\n");
-		id = gamma_add_swap(ls);
-		gamma_add_proof(id, NULL, NULL);
-		gamma_ref(id);
-		return id;
+		ls1 = litset_new();
+		for(i = 0; i < ls->n; i++)
+			litset_add(ls1, lit_make(!ls->mem[i].neg, ls->mem[i].id));
+		id = gamma_add(ls1);
+		return 1;
 	}
 	fprintf(stderr, "sat\n");
 	return 0;

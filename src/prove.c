@@ -46,8 +46,8 @@ void prove_dpll_proof_free(int seq, LitSet *cl, void *extra)
 
 static int add_clause(LitSet *env)
 {
-	return equal_test(env);
-	//return arith_test(env);
+	//return equal_test(env);
+	return arith_test(env);
 	return 0;
 }
 

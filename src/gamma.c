@@ -58,14 +58,6 @@ int gamma_add(LitSet *ls)
 	return id;
 }
 
-int gamma_add_swap(LitSet *ls)
-{
-	int i;
-	for(i = 0; i < ls->n; i++)
-		ls->mem[i].neg = !ls->mem[i].neg;
-	return gamma_add(ls);
-}
-
 void gamma_add_proof(int id,
 		     void (*proof)(int seq, LitSet *lit, void *extra),
 		     void *extra)
