@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 	fprintf(pout, "Section prove0.\n");
 
 	/* ~a */
-	et = etree_mknode(T_NOT, 0, et, NULL);
+	et = etree_mknode(T_NOT, lit_make(0, 0), et, NULL);
 	etree_dump_prefix(et, stderr);
 	fprintf(stderr, "\n");
 

@@ -2,14 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <setjmp.h>
-#include "etree.h"
-#include "proof.h"
+#include "comm.h"
 #include "dpll.h"
 #include "equal.h"
-#include "gamma.h"
 
-void equal_proof(int seq, struct lit_set *lit, void *extra);
-int arith_test(unsigned long long penv, unsigned long long nenv);
+void equal_proof(int seq, LitSet *lit, void *extra);
+int arith_test(LitSet *env);
 
 static jmp_buf env;
 
@@ -40,119 +38,97 @@ static void pool_free()
 	poolp = pool = NULL;
 }
 
-void prove_dpll_proof_free(int seq, struct lit_set *cl, void *extra)
+void prove_dpll_proof_free(int seq, LitSet *cl, void *extra)
 {
 	prove_dpll_proof(seq, cl, extra);
 	pool_free();
 }
 
-static int add_clause(unsigned long long penv, unsigned long long nenv)
+static int add_clause(LitSet *env)
 {
-	unsigned long long eq_env, eq_v;
-	int i;
 	int id;
-	eq_v = nenv;
-	for(i = 0; i < 64; i++, eq_v >>= 1) {
-		if(eq_v & 1) {
-			eq_env = penv;
-			if(equal_test(&eq_env, i)) {
-				id = gamma_add(1ull<<i, eq_env);
-				gamma_add_proof(id, equal_proof, NULL);
-				gamma_ref(id);
-				return id;
-			}
-		}
-	}
-	return arith_test(penv, nenv);
+	//if(equal_test(env)) {
+		//id = gamma_add(...);
+		//gamma_add_proof(id, equal_proof, NULL);
+		//gamma_ref(id);
+		//return id;
+		//}
+	//return arith_test(env);
+	return 0;
 }
 
 static struct dpll_tree
-*__prove_dpll(int lev, struct lit_set *prev, unsigned long long mask)
+*__prove_dpll(int i, LitSet *pasgn, LitSet *cls)
 {
-	unsigned long long vmask, amask;
-	struct lit_set cur, *curr;
+	LitSet *casgn;
 	struct dpll_tree *tr;
-	curr = &cur;
-	*curr = *prev;
-	if(!mask) {
-		fprintf(stderr, "assign %016llx %016llx %016llx\n", curr->cp, curr->cn,
-		       curr->cp | curr->cn);
+
+	if(i == cls->n) {
+		fprintf(stderr, "assign found:");
+		litset_print(pasgn, 0, "/\\", stderr);
+		fprintf(stderr, "\n");
 		longjmp(env, 1);
 	}
-	vmask = 1ull << lev;
-	amask = curr->cp | curr->cn;
-	if((mask & 1) && !(amask & vmask)) {
-		tr = pool_get(sizeof(struct dpll_tree));
-		tr->t = NULL;
-		tr->f = NULL;
-		tr->lev = lev;
+	tr = pool_get(sizeof(struct dpll_tree));
+	tr->t = NULL;
+	tr->f = NULL;
+	tr->lit = cls->mem[i];
 
-		curr->cp |= vmask;
-		if((tr->ti = gamma_match(~curr->cn, ~curr->cp)) != -1)
-			gamma_ref(tr->ti);
-	        else if(!(tr->ti = add_clause(curr->cp, curr->cn)))
-			tr->t = __prove_dpll(lev+1, curr, mask>>1);
+	casgn = litset_dup(pasgn);
+	litset_add(casgn, lit_make(0, cls->mem[i].id));
+	if((tr->ti = gamma_match(casgn)) != -1)
+		gamma_ref(tr->ti);
+	else if(!(tr->ti = add_clause(casgn)))
+		tr->t = __prove_dpll(i+1, casgn, cls);
+	litset_del(casgn);
 
-		*curr = *prev;
-		curr->cn |= vmask;
-		if((tr->fi = gamma_match(~curr->cn, ~curr->cp)) != -1)
-			gamma_ref(tr->fi);
-		else if(!(tr->fi = add_clause(curr->cp, curr->cn)))
-			tr->f = __prove_dpll(lev+1, curr, mask>>1);
-	} else {
-		return __prove_dpll(lev+1, curr, mask>>1);
-	}
+	casgn = litset_dup(pasgn);
+	litset_add(casgn, lit_make(1, cls->mem[i].id));
+	if((tr->fi = gamma_match(casgn)) != -1)
+		gamma_ref(tr->fi);
+	else if(!(tr->fi = add_clause(casgn)))
+		tr->f = __prove_dpll(i+1, casgn, cls);
+	litset_del(casgn);
 	return tr;
 }
 
 int prove_dpll()
 {
-	struct lit_set assign;
-	struct lit_set lit;
+	LitSet *asgn, *cl, *cls;
 	struct dpll_tree *tr;
-	unsigned long long cp, cn, mask;
-	int i;
 	int id;
-	int n;
+	int i, j, n;
 
-	/* 消去没有使用的变量 */
-	cp = 0;
-	cn = 0;
+	cls = litset_new();
+	/* 消去没有使用的变量, 暂时没有了 */
 	n = gamma_get_num();
 	for(i = 0; i < n; i++)
 	{
-		gamma_get(i, &lit);
-		cp |= lit.cp;
-		cn |= lit.cn;
+		cl = gamma_get(i);
+		for(j = 0; j < cl->n; j++)
+			litset_add(cls, lit_make(0, cl->mem[j].id));
 	}
-	mask = cp | cn;
-	assign.cp = cp & (cp ^ cn);
-	assign.cn = cn & (cp ^ cn);
-	for(i = 0; i < n; i++)
-	{
-		cp &= ~assign.cp;
-		cn &= ~assign.cn;
-	}
-	assign.cp = 0;
-	assign.cn = 0;
-
 	fprintf(stderr, "num:%d\n", n);
-	fprintf(stderr, "initial assign %016llx %016llx mask %016llx\n", assign.cp, assign.cn, mask);
 
 	/* 搜索并证明 */
 	pool_init();
 	if(!setjmp(env))
 	{
-		tr = __prove_dpll(0, &assign, mask);
-		id = gamma_add(0ull, 0ull);
+		asgn = litset_new();
+		tr = __prove_dpll(0, asgn, cls);
+		id = gamma_add(asgn);
 		gamma_add_proof(id, prove_dpll_proof_free, tr);
 		gamma_ref(id);
+		litset_del(asgn);
+		litset_del(cls);
 		return id+1;
 	}
 	else
 	{
 		pool_free();
 		fprintf(stderr, "no!\n");
+		litset_del(asgn);
+		litset_del(cls);
 		return 0;
 	}
 }

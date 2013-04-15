@@ -1,66 +1,63 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "comm.h"
 #include "proof.h"
 #include "dpll.h"
-#include "proof_utils.h"
-#include "gamma.h"
 
-static void proof(
-	unsigned long long cp,
-	unsigned long long cn,
-	int hseq)
+static void proof(LitSet *ls, int hseq)
 {
-	int i, n;
-	int vec[128];
+	int i, j;
 	int hcount;
-	n = bit2vec(cp, cn, vec);
 	hcount = 1;
 	fprintf(pout, "(");
-	for(i = 0; i < n; i++)
+	for(i = 0; i < ls->n; i++)
 	{
-		if(i != n - 1)
+		if(i != ls->n-1)
 			fprintf(pout, "(or_ind ");
 		fprintf(pout, "(fun (H%d:", hcount++);
-		print_lit(vec[i]);
+		lit_print(ls->mem[i], pout);
 		fprintf(pout, ") => ");
-		if(vec[i] > 0)
-			fprintf(pout, "F%d H%d", vec[i]-1, hcount-1);
+		if(ls->mem[i].neg == 0)
+			fprintf(pout, "F%d H%d", ls->mem[i].id, hcount-1);
 		else
-			fprintf(pout, "H%d T%d", hcount-1, -vec[i]-1);
+			fprintf(pout, "H%d T%d", hcount-1, ls->mem[i].id);
 		fprintf(pout, ")");
-		if(i == n - 1)
-			rep_print(")", n-1);
+		if(i == ls->n-1) {
+			for(j = 0; j < ls->n-1;j++)
+				fprintf(pout, ")");
+		}
 	}
 	fprintf(pout, "L%d)", hseq);
 }
 
-static void __prove_dpll_proof(struct dpll_tree *tr)
+static void __prove_dpll_proof(struct dpll_tree *tr, int i)
 {
-	struct lit_set lit;
-	int lev = tr->lev;
-	fprintf(pout, "(fun (F%d:~", lev);print_lit(lev+1);
+	LitSet *ls;
+	fprintf(pout, "(fun (F%d:~", i);
+	lit_print(tr->lit, pout);
 	fprintf(pout, ") => (");
 	if(!tr->f) {
-		gamma_get(tr->fi, &lit);
-		proof(lit.cp, lit.cn, tr->fi+1);
+		ls = gamma_get(tr->fi);
+		proof(ls, tr->fi+1);
 	} else {
-		__prove_dpll_proof(tr->f);
+		__prove_dpll_proof(tr->f, i+1);
 	}
-	fprintf(pout, ")) (fun (T%d:", lev);print_lit(lev+1);
+	fprintf(pout, ")) (fun (T%d:", i);
+	lit_print(tr->lit, pout);
 	fprintf(pout, ") => (");
 	if(!tr->t) {
-		gamma_get(tr->ti, &lit);
-		proof(lit.cp, lit.cn, tr->ti+1);
+		ls = gamma_get(tr->ti);
+		proof(ls, tr->ti+1);
 	} else {
-		__prove_dpll_proof(tr->t);
+		__prove_dpll_proof(tr->t, i+1);
 	}
 	fprintf(pout, "))");
 }
 
-void prove_dpll_proof(int seq, struct lit_set *cl, void *extra)
+void prove_dpll_proof(int seq, LitSet *cl, void *extra)
 {
 	struct dpll_tree *tr = extra;
 	fprintf(pout, "Lemma L%d:False.\nProof (", seq);
-	__prove_dpll_proof(tr);
+	__prove_dpll_proof(tr, 0);
 	fprintf(pout, ").\n");
 }

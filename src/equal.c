@@ -1,6 +1,5 @@
+#include "comm.h"
 #include "equal.h"
-#include "pred.h"
-#include "func.h"
 #include <string.h>
 
 static int get_fa(int *fa, int v)

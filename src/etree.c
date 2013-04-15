@@ -2,17 +2,7 @@
 #include <string.h>
 #include "etree.h"
 #include "pred.h"
-
-static void print_lit(int val, FILE *fp)
-{
-	if(val < 0)
-	{
-		fprintf(fp, "~");
-		prop_print(-val-1, fp);
-	}
-	else
-		prop_print(val-1, fp);
-}
+#include "lit.h"
 
 void etree_dump_infix(struct etree *p, FILE *fp)
 {
@@ -38,7 +28,7 @@ void etree_dump_infix(struct etree *p, FILE *fp)
 		fprintf(fp, ")");
 		break;
 	case T_PROP:
-		print_lit(p->val, fp);
+		lit_print(p->val, fp);
 		break;
 	case T_NOT:
 		fprintf(fp, "~(");
@@ -69,7 +59,7 @@ void etree_dump_prefix(struct etree *p, FILE *fp)
 		fprintf(fp,")");
 		break;
 	case T_PROP:
-		print_lit(p->val, fp);
+		lit_print(p->val, fp);
 		break;
 	case T_NOT:
 		fprintf(fp,"(not ");

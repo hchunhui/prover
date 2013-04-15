@@ -3,6 +3,7 @@
 #include "etree.h"
 #include "pred.h"
 #include "func.h"
+#include "lit.h"
 
 static struct etree *et;
 void yyerror(char* msg)
@@ -39,7 +40,7 @@ main: expr EOL {et = $1;};
 expr
 	: PROP
 	{
-		$$ = etree_mknode(T_PROP, 1+prop_new($1), NULL, NULL);
+		$$ = etree_mknode(T_PROP, lit_make(0, prop_new($1)), NULL, NULL);
 	}
 	| '(' expr ')'
 	{
@@ -47,27 +48,27 @@ expr
 	}
 	| expr IMPL expr
 	{
-		$$ = etree_mknode(T_IMPL, 0, $1, $3);
+		$$ = etree_mknode(T_IMPL, lit_make(0, 0), $1, $3);
 	}
 	| expr AND expr
 	{
-		$$ = etree_mknode(T_AND, 0, $1, $3);
+		$$ = etree_mknode(T_AND, lit_make(0, 0), $1, $3);
 	}
 	| expr OR expr
 	{
-		$$ = etree_mknode(T_OR, 0, $1, $3);
+		$$ = etree_mknode(T_OR, lit_make(0, 0), $1, $3);
 	}
 	| NOT expr
 	{
-		$$ = etree_mknode(T_NOT, 0, $2, NULL);
+		$$ = etree_mknode(T_NOT, lit_make(0, 0), $2, NULL);
 	}
 	| func EQU func
 	{
-		$$ = etree_mknode(T_PROP, 1+pred_new(P_EQU, $1, $3), NULL, NULL);
+		$$ = etree_mknode(T_PROP, lit_make(0, pred_new(P_EQU, $1, $3)), NULL, NULL);
 	}
 	| func LE func
 	{
-		$$ = etree_mknode(T_PROP, 1+pred_new(P_LE, $1, $3), NULL, NULL);
+		$$ = etree_mknode(T_PROP, lit_make(0, pred_new(P_LE, $1, $3)), NULL, NULL);
 	}
 	;
 

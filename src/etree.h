@@ -2,11 +2,12 @@
 #define _ETREE_H_
 #include <stdio.h>
 #include <stdlib.h>
+#include "lit.h"
 
 struct etree
 {
 	int type;
-	int val;
+	Lit val;
 	struct etree *l, *r;
 };
 
@@ -20,7 +21,7 @@ enum {
 
 static struct etree *etree_mknode
 (int type,
- int val,
+ Lit val,
  struct etree *l,
  struct etree *r)
 {

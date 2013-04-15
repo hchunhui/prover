@@ -5,10 +5,10 @@
 #include "proof.h"
 #include "pred.h"
 
-static void print_iffp(int val)
+static void print_iffp(Lit val)
 {
 	fprintf(pout, "(iff_p ");
-	prop_print(val-1, pout);
+	prop_print(val.id, pout);
 	fprintf(pout, ")");
 }
 

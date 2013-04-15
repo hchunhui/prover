@@ -13,7 +13,7 @@ void simp_impl(struct etree *p)
 	switch(p->type)
 	{
 	case T_IMPL:
-		t = etree_mknode(T_NOT, 0, p->l, NULL);
+		t = etree_mknode(T_NOT, lit_make(0, 0), p->l, NULL);
 		p->l = t;
 		p->type = T_OR;
 		simp_impl(p->l);
@@ -50,15 +50,15 @@ static void __simp_not1(struct etree *p, int not)
 			p->type = T_OR;
 	comm_case:
 		if(not) {
-			t = etree_mknode(0, 0, NULL, NULL);
+			t = etree_mknode(0, lit_make(0, 0), NULL, NULL);
 			memcpy(t, p, sizeof(struct etree));
 			p->type = T_NOT;
 			p->l = t;
 			p->r = NULL;
 			p = p->l;
-			t = etree_mknode(T_NOT, 0, p->l, NULL);
+			t = etree_mknode(T_NOT, lit_make(0, 0), p->l, NULL);
 			p->l = t;
-			t = etree_mknode(T_NOT, 0, p->r, NULL);
+			t = etree_mknode(T_NOT, lit_make(0, 0), p->r, NULL);
 			p->r = t;
 		}
 		__simp_not1(p->l, 0);
@@ -90,7 +90,7 @@ static void __simp_not2(struct etree *p, int not)
 		break;
 	case T_PROP:
 		if(not)
-			p->val = -p->val;
+			p->val.neg = !p->val.neg;
 		break;
 	}
 }

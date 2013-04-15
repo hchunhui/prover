@@ -1,10 +1,8 @@
 #include <stdio.h>
 #include <string.h>
-#include "dpll.h"
+#include "comm.h"
 #include "proof.h"
-#include "pred.h"
-#include "func.h"
-#include "proof_utils.h"
+
 static int fa[64];
 static int id[64];
 static int count;
@@ -40,6 +38,7 @@ static int set_find(int idx, int idy)
 /* proof version */
 static int get_fa_proof(int v)
 {
+	int i;
 	int n;
 	n = 0;
 	if(fa[v] == v)
@@ -54,8 +53,10 @@ static int get_fa_proof(int v)
 		if(fa[fa[v]] != fa[v])
 			fprintf(pout, "(trans_eq ");
 		fprintf(pout, "H%d ", id[v]);
-		if(fa[fa[v]] == fa[v])
-			rep_print(")", n);
+		if(fa[fa[v]] == fa[v]) {
+			for(i = 0; i < n; i++)
+				fprintf(pout, ")");
+		}
 		v = fa[v];
 		n++;
 	}
@@ -159,32 +160,30 @@ static int equal_closure()
 	return flag;
 }
 
-void equal_proof(int seq, struct lit_set *lit, void *extra)
+void equal_proof(int seq, LitSet *ls, void *extra)
 {
-	int i, n;
+	int i;
 	struct pred p;
-	int vec[128];
 
 	fprintf(pout, "Definition L%d := ", seq);
-	n = bit2vec(lit->cp, lit->cn, vec);
 	set_init();
-	for(i = 0; i < n; i++)
+	for(i = 0; i < ls->n; i++)
 	{
-		if(vec[i] < 0)
+		if(ls->mem[i].neg)
 		{
-			pred_get(&p, -vec[i]-1);
+			pred_get(&p, ls->mem[i].id);
 			fprintf(pout, "horn _ _ (fun H%d:(", count++);
-			print_lit(-vec[i]);
+			lit_print(ls->mem[i], pout);
 			fprintf(pout, ") => ");
 			set_union_proof(p.lv, p.rv, count-1);
 		}
 	}
 
-	for(i = 0; i < n; i++)
+	for(i = 0; i < ls->n; i++)
 	{
-		if(vec[i] > 0)
+		if(ls->mem[i].neg == 0)
 		{
-			pred_get(&p, vec[i]-1);
+			pred_get(&p, ls->mem[i].id);
 			do {
 				if(set_find(p.lv, p.rv))
 					break;
@@ -194,6 +193,7 @@ void equal_proof(int seq, struct lit_set *lit, void *extra)
 	}
 
 	set_find_proof(p.lv, p.rv);
-	rep_print(")", n-1);
+	for(i = 0; i < ls->n-1; i++)
+		fprintf(pout, ")");
 	fprintf(pout, ".\nCheck (L%d).\n", seq);
 }

@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "pred.h"
-#include "func.h"
-#include "gamma.h"
+#include "comm.h"
 
 struct qnum
 {
@@ -319,27 +317,26 @@ void simplex_proof(struct simplex_ctx *ctx)
 	printf("End simplex.\nCheck L.\n");
 }
 
-static int count_m(unsigned long long env, int flag)
+static int count_m(LitSet *ls)
 {
 	int i;
 	int count;
 	struct pred p;
 	count = 0;
-	for(i = 0; i < 64; i++, env >>= 1) {
-		if(env & 1) {
-			pred_get(&p, i);
-			switch(p.type)
-			{
-			case P_EQU:
-				if(flag)
-					count += 2;
-				else
-					count++;
-				break;
-			case P_LE:
+	for(i = 0; i < ls->n; i++)
+	{
+		pred_get(&p, ls->mem[i].id);
+		switch(p.type)
+		{
+		case P_EQU:
+			if(ls->mem[i].neg == 0)
+				count += 2;
+			else
 				count++;
-				break;
-			}
+			break;
+		case P_LE:
+			count++;
+			break;
 		}
 	}
 	return count;
@@ -363,36 +360,18 @@ static void __count_n(int i, int *varmap, int *n)
 	}
 }
 
-static int count_n(int *varmap, unsigned long long penv, unsigned long long nenv)
+static int count_n(int *varmap, LitSet *ls)
 {
 	int i, n;
 	struct pred p;
-	unsigned long long env;
 	n = 0;
-	env = penv;
-	for(i = 0; i < 64; i++, env >>= 1)
+	for(i = 0; i < ls->n; i++)
 	{
-		if(env & 1)
+		pred_get(&p, ls->mem[i].id);
+		if(p.type == P_EQU || p.type == P_LE)
 		{
-			pred_get(&p, i);
-			if(p.type == P_EQU || p.type == P_LE)
-			{
-				__count_n(p.lv, varmap, &n);
-				__count_n(p.rv, varmap, &n);
-			}
-		}
-	}
-	env = nenv;
-	for(i = 0; i < 64; i++, env >>= 1)
-	{
-		if(env & 1)
-		{
-			pred_get(&p, i);
-			if(p.type == P_EQU || p.type == P_LE)
-			{
-				__count_n(p.lv, varmap, &n);
-				__count_n(p.rv, varmap, &n);
-			}
+			__count_n(p.lv, varmap, &n);
+			__count_n(p.rv, varmap, &n);
 		}
 	}
 	return n;
@@ -424,26 +403,22 @@ static void cons_ctx(
 	struct simplex_ctx *ctx,
 	int *varmap,
 	int *fix,
-	unsigned long long penv,
-	unsigned long long nenv)
+	LitSet *ls)
 {
 	int i, m;
 	int j;
 	int c[64];
 	struct pred p;
-	unsigned long long env;
 	m = 0;
-	env = penv;
-	for(i = 0; i < 64; i++, env >>= 1)
+	for(i = 0; i < ls->n; i++)
 	{
-		if(env & 1)
+		pred_get(&p, ls->mem[i].id);
+		if(p.type == P_EQU || p.type == P_LE)
 		{
-			pred_get(&p, i);
-			if(p.type == P_EQU || p.type == P_LE)
-			{
-				memset(c, 0, sizeof(c));
-				cons_single(p.lv, varmap, c, 1);
-				cons_single(p.rv, varmap, c, -1);
+			memset(c, 0, sizeof(c));
+			cons_single(p.lv, varmap, c, 1);
+			cons_single(p.rv, varmap, c, -1);
+			if(ls->mem[i].neg == 0)	{
 				if(p.type == P_LE) {
 					for(j = 0; j < ctx->n; j++)
 						ctx->t[m][j] = Qint(c[j]);
@@ -463,33 +438,26 @@ static void cons_ctx(
 					fix[m] = 0;
 					m++;
 				}
-			}
-		}
-	}
-	env = nenv;
-	for(i = 0; i < 64; i++, env >>= 1)
-	{
-		if(env & 1)
-		{
-			pred_get(&p, i);
-			if(p.type == P_EQU || p.type == P_LE)
-			{
-				memset(c, 0, sizeof(c));
-				cons_single(p.lv, varmap, c, 1);
-				cons_single(p.rv, varmap, c, -1);
-				if(p.type == P_LE) {
-					for(j = 0; j < ctx->n; j++)
-						ctx->t[m][j] = Qint(-c[j]);
-					ctx->bv[m] = Qint(c[63]-1);
-					fix[m] = 0;
-					m++;
-				}
-				if(p.type == P_EQU) {
-					for(j = 0; j < ctx->n; j++)
-						ctx->t[m][j] = Qint(c[j]);
-					ctx->bv[m] = Qint(-c[63]);
-					fix[m] = 1;
-					m++;
+			} else {
+				if(p.type == P_EQU || p.type == P_LE)
+				{
+					memset(c, 0, sizeof(c));
+					cons_single(p.lv, varmap, c, 1);
+					cons_single(p.rv, varmap, c, -1);
+					if(p.type == P_LE) {
+						for(j = 0; j < ctx->n; j++)
+							ctx->t[m][j] = Qint(-c[j]);
+						ctx->bv[m] = Qint(c[63]-1);
+						fix[m] = 0;
+						m++;
+					}
+					if(p.type == P_EQU) {
+						for(j = 0; j < ctx->n; j++)
+							ctx->t[m][j] = Qint(c[j]);
+						ctx->bv[m] = Qint(-c[63]);
+						fix[m] = 1;
+						m++;
+					}
 				}
 			}
 		}
@@ -506,14 +474,14 @@ int do_fix_solve(struct simplex_ctx *ctx, int *fix, int i)
 	if(fix[i])
 	{
 		fprintf(stderr, "-----branch in %d-----\n", i);
-		fprintf(stderr, "-----case1 <= -----\n", i);
+		fprintf(stderr, "-----case1 <= -----\n");
 		ctx2 = simplex_dup_ctx(ctx);
 		/* case1: a.x != b  ==> a.x <= b-1*/
 		ctx->bv[i] = Qsub(ctx->bv[i], Qint(1));
 		if(ret = do_fix_solve(ctx, fix, i+1))
 			goto clean;
-		fprintf(stderr, "-----case1 unsat-----\n", i);
-		fprintf(stderr, "-----case2 >= -----\n", i);
+		fprintf(stderr, "-----case1 unsat-----\n");
+		fprintf(stderr, "-----case2 >= -----\n");
 		/* case2: a.x != b ==> a.x >= b+1 ==> -a.x <= -b-1 */
 		for(j = 0; j < ctx->n; j++)
 			ctx2->t[i][j] = Qneg(ctx2->t[i][j]);
@@ -522,7 +490,7 @@ int do_fix_solve(struct simplex_ctx *ctx, int *fix, int i)
 		if(ret = do_fix_solve(ctx2, fix, i+1))
 			goto clean;
 		ret = 0;
-		fprintf(stderr, "-----case2 unsat-----\n", i);
+		fprintf(stderr, "-----case2 unsat-----\n");
 	clean:
 		simplex_del_ctx(ctx2);
 		return ret;
@@ -530,22 +498,22 @@ int do_fix_solve(struct simplex_ctx *ctx, int *fix, int i)
 	return do_fix_solve(ctx, fix, i+1);
 }
 
-int arith_test(unsigned long long penv, unsigned long long nenv)
+int arith_test(LitSet *ls)
 {
 	int m, n;
 	int id;
 	int varmap[64];
 	struct simplex_ctx *ctx;
 	memset(varmap, -1, sizeof(varmap));
-	m = count_m(penv, 1) + count_m(nenv, 0);
-	n = count_n(varmap, penv, nenv);
+	m = count_m(ls);
+	n = count_n(varmap, ls);
 	ctx = simplex_new_ctx(n, m);
 	int fix[m];
-	cons_ctx(ctx, varmap, fix, penv, nenv);
+	cons_ctx(ctx, varmap, fix, ls);
 	if(do_fix_solve(ctx, fix, 0) == 0)
 	{
 		fprintf(stderr, "unsat\n");
-		id = gamma_add(nenv, penv);
+		id = gamma_add_swap(ls);
 		gamma_add_proof(id, NULL, NULL);
 		gamma_ref(id);
 		return id;
