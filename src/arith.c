@@ -214,10 +214,34 @@ static void pretty_print(struct simplex_ctx *ctx)
 	fprintf(stderr, "\n");
 }
 
+static void pivot(struct simplex_ctx *ctx, int i, int j)
+{
+	int k, l;
+	xint temp;
+	Q rev;
+	temp = ctx->bl[i];
+	ctx->bl[i] = ctx->nl[j];
+	ctx->nl[j] = temp;
+	rev = Qrev(ctx->t[i][j]);
+	ctx->t[i][j] = rev;
+	for(l = 0; l < ctx->n; l++)
+		if(l != j)
+			ctx->t[i][l] = Qneg(Qmul(ctx->t[i][l], rev));
+	for(k = 0; k < ctx->m; k++)
+		if(k != i)
+			for(l = 0; l < ctx->n; l++)
+				if(l != j)
+					ctx->t[k][l] = Qadd(ctx->t[k][l],
+							    Qmul(ctx->t[k][j], ctx->t[i][l]));
+	for(k = 0; k < ctx->m; k++)
+		if(k != i)
+			ctx->t[k][j] = Qmul(ctx->t[k][j], rev);
+}
+
 int simplex_solve(struct simplex_ctx *ctx)
 {
-	int i, j, k, l;
-	Q sum, theta, diff, rev;
+	int i, j;
+	Q sum, theta, diff;
 	xint temp;
 	for(i = 0; i < ctx->n; i++)
 		ctx->av[i] = Qint(0);
@@ -262,23 +286,7 @@ int simplex_solve(struct simplex_ctx *ctx)
 		if(j == ctx->n)
 			return 0; /* unsat */
 		/* pivot */
-		temp = ctx->bl[i];
-		ctx->bl[i] = ctx->nl[j];
-		ctx->nl[j] = temp;
-		rev = Qrev(ctx->t[i][j]);
-		ctx->t[i][j] = rev;
-		for(l = 0; l < ctx->n; l++)
-			if(l != j)
-				ctx->t[i][l] = Qneg(Qmul(ctx->t[i][l], rev));
-		for(k = 0; k < ctx->m; k++)
-			if(k != i)
-				for(l = 0; l < ctx->n; l++)
-					if(l != j)
-						ctx->t[k][l] = Qadd(ctx->t[k][l],
-								    Qmul(ctx->t[k][j], ctx->t[i][l]));
-		for(k = 0; k < ctx->m; k++)
-			if(k != i)
-				ctx->t[k][j] = Qmul(ctx->t[k][j], rev);
+		pivot(ctx, i, j);
 	}
 }
 
@@ -322,6 +330,73 @@ void simplex_proof(struct simplex_ctx *ctx)
 	printf("End simplex.\nCheck L.\n");
 }
 
+static void __count_n(int i, int *varmap, int *n, int flag)
+{
+	int j;
+	struct func f;
+	struct func_info fi;
+	func_get(&f, &fi, i);
+	if(strcmp(fi.name,"+") == 0) {
+		if(flag && varmap[i] == -1) {
+			varmap[i] = *n;
+			(*n)++;
+		}
+		__count_n(f.arr[0], varmap, n, 0);
+		__count_n(f.arr[1], varmap, n, 0);
+	} else 	if(strcmp(fi.name, ".") == 0) {
+		if(flag && varmap[i] == -1) {
+			varmap[i] = *n;
+			(*n)++;
+		}
+		__count_n(f.arr[1], varmap, n, 0);
+	} else if(fi.name[0] != '@') {
+		if(varmap[i] == -1) {
+			varmap[i] = *n;
+			(*n)++;
+		}
+		for(j = 0; j < fi.n; j++)
+			__count_n(f.arr[j], varmap, n, 1);
+	}
+}
+
+static int count_n(int *varmap, LitSet *ls)
+{
+	int i, n;
+	struct pred p;
+	n = 0;
+	for(i = 0; i < ls->n; i++)
+	{
+		pred_get(&p, ls->mem[i].id);
+		if(p.type == P_EQU || p.type == P_LE)
+		{
+			__count_n(p.lv, varmap, &n, 0);
+			__count_n(p.rv, varmap, &n, 0);
+		}
+	}
+	return n;
+}
+
+static int count_m_purify(int fid, int flag)
+{
+	int i;
+	struct func f;
+	struct func_info fi;
+	int count;
+	count = 0;
+	func_get(&f, &fi, fid);
+	if((strcmp(fi.name,"+") == 0 || strcmp(fi.name, ".") == 0) &&
+	   flag)
+	{
+		count += 2;
+		flag = 0;
+	}
+	else
+		flag = 1;
+	for(i = 0; i < fi.n; i++)
+		count += count_m_purify(f.arr[i], flag);
+	return count;
+}
+
 static int count_m(LitSet *ls)
 {
 	int i;
@@ -336,50 +411,18 @@ static int count_m(LitSet *ls)
 		case P_EQU:
 			if(ls->mem[i].neg == 0)
 				count += 2;
-			else
-				count++;
 			break;
 		case P_LE:
 			count++;
 			break;
 		}
+		if(p.type != P_ATOM)
+		{
+			count += count_m_purify(p.lv, 0);
+			count += count_m_purify(p.rv, 0);
+		}
 	}
 	return count;
-}
-
-static void __count_n(int i, int *varmap, int *n)
-{
-	struct func f;
-	struct func_info fi;
-	func_get(&f, &fi, i);
-	if(strcmp(fi.name,"+") == 0) {
-		__count_n(f.arr[0], varmap, n);
-		__count_n(f.arr[1], varmap, n);
-	} else 	if(strcmp(fi.name, ".") == 0) {
-		__count_n(f.arr[1], varmap, n);
-	} else if(fi.name[0] != '@') {
-		if(varmap[i] == -1) {
-			varmap[i] = *n;
-			(*n)++;
-		}
-	}
-}
-
-static int count_n(int *varmap, LitSet *ls)
-{
-	int i, n;
-	struct pred p;
-	n = 0;
-	for(i = 0; i < ls->n; i++)
-	{
-		pred_get(&p, ls->mem[i].id);
-		if(p.type == P_EQU || p.type == P_LE)
-		{
-			__count_n(p.lv, varmap, &n);
-			__count_n(p.rv, varmap, &n);
-		}
-	}
-	return n;
 }
 
 static void cons_single(int i, int *varmap, int *c, int add)
@@ -397,22 +440,74 @@ static void cons_single(int i, int *varmap, int *c, int add)
 		c[varmap[f.arr[1]]] += add*val;
 	} else if(fi.name[0] == '@') {
 		val = atoi(fi.name+1);
-		c[63] += add*val;
+		c[64] += add*val;
 	} else {
 		val = atoi(fi1.name+1);
 		c[varmap[i]] += add;
 	}
 }
 
+static void __cons_ctx(struct simplex_ctx *ctx, int c[64+1], int type, int neg, int *m)
+{
+	int j;
+	if(neg == 0)	{
+		if(type == P_LE) {
+			for(j = 0; j < ctx->n; j++)
+				ctx->t[*m][j] = Qint(c[j]);
+			ctx->bv[*m] = Qint(-c[64]);
+			(*m)++;
+		}
+		if(type == P_EQU) {
+			for(j = 0; j < ctx->n; j++)
+				ctx->t[*m][j] = Qint(c[j]);
+			ctx->bv[*m] = Qint(-c[64]);
+			(*m)++;
+			for(j = 0; j < ctx->n; j++)
+				ctx->t[*m][j] = Qint(-c[j]);
+			ctx->bv[*m] = Qint(c[64]);
+			(*m)++;
+		}
+	} else {
+		if(type == P_LE)
+		{
+			for(j = 0; j < ctx->n; j++)
+				ctx->t[*m][j] = Qint(-c[j]);
+			ctx->bv[*m] = Qint(c[64]-1);
+			(*m)++;
+		}
+	}
+}
+
+static void cons_ctx_purify(struct simplex_ctx *ctx, int *varmap, int fid, int flag, int *m)
+{
+	int i;
+	struct func f;
+	struct func_info fi;
+	int c[64+1];
+	func_get(&f, &fi, fid);
+	if((strcmp(fi.name,"+") == 0 || strcmp(fi.name, ".") == 0) && flag)
+	{
+		memset(c, 0, sizeof(c));
+		cons_single(fid, varmap, c, 1);
+		c[varmap[fid]] -= 1;
+		__cons_ctx(ctx, c, P_EQU, 0, m);
+		flag = 0;
+	}
+	else 
+		flag = 1;
+	for(i = 0; i < fi.n; i++)
+		cons_ctx_purify(ctx, varmap, f.arr[i], flag, m);
+}
+
 static void cons_ctx(
 	struct simplex_ctx *ctx,
 	int *varmap,
-	int *fix,
 	LitSet *ls)
 {
-	int i, m;
-	int j;
-	int c[64];
+
+	int i;
+	int m;
+	int c[64+1];
 	struct pred p;
 	m = 0;
 	for(i = 0; i < ls->n; i++)
@@ -423,84 +518,75 @@ static void cons_ctx(
 			memset(c, 0, sizeof(c));
 			cons_single(p.lv, varmap, c, 1);
 			cons_single(p.rv, varmap, c, -1);
-			if(ls->mem[i].neg == 0)	{
-				if(p.type == P_LE) {
-					for(j = 0; j < ctx->n; j++)
-						ctx->t[m][j] = Qint(c[j]);
-					ctx->bv[m] = Qint(-c[63]);
-					fix[m] = 0;
-					m++;
-				}
-				if(p.type == P_EQU) {
-					for(j = 0; j < ctx->n; j++)
-						ctx->t[m][j] = Qint(c[j]);
-					ctx->bv[m] = Qint(-c[63]);
-					fix[m] = 0;
-					m++;
-					for(j = 0; j < ctx->n; j++)
-						ctx->t[m][j] = Qint(-c[j]);
-					ctx->bv[m] = Qint(c[63]);
-					fix[m] = 0;
-					m++;
-				}
-			} else {
-				if(p.type == P_EQU || p.type == P_LE)
-				{
-					memset(c, 0, sizeof(c));
-					cons_single(p.lv, varmap, c, 1);
-					cons_single(p.rv, varmap, c, -1);
-					if(p.type == P_LE) {
-						for(j = 0; j < ctx->n; j++)
-							ctx->t[m][j] = Qint(-c[j]);
-						ctx->bv[m] = Qint(c[63]-1);
-						fix[m] = 0;
-						m++;
-					}
-					if(p.type == P_EQU) {
-						for(j = 0; j < ctx->n; j++)
-							ctx->t[m][j] = Qint(c[j]);
-						ctx->bv[m] = Qint(-c[63]);
-						fix[m] = 1;
-						m++;
-					}
-				}
-			}
+			__cons_ctx(ctx, c, p.type, ls->mem[i].neg, &m);
+			cons_ctx_purify(ctx, varmap, p.lv, 0, &m);
+			cons_ctx_purify(ctx, varmap, p.rv, 0, &m);
 		}
 	}
 }
 
-int do_fix_solve(struct simplex_ctx *ctx, int *fix, int i)
+static int bound_test(struct simplex_ctx *ctx)
 {
-	int ret;
-	int j;
-	struct simplex_ctx *ctx2;
-	if(i == ctx->m)
-		return simplex_solve(ctx);
-	if(fix[i])
+	int i, j;
+	int ub[ctx->n], lb[ctx->n];
+	for(j = 0; j < ctx->n; j++)
+		ub[j] = 0;
+	for(j = 0; j < ctx->n; j++)
+		lb[j] = 0;
+	for(;;)
 	{
-		fprintf(stderr, "-----branch in %d-----\n", i);
-		fprintf(stderr, "-----case1 <= -----\n");
-		ctx2 = simplex_dup_ctx(ctx);
-		/* case1: a.x != b  ==> a.x <= b-1*/
-		ctx->bv[i] = Qsub(ctx->bv[i], Qint(1));
-		if(ret = do_fix_solve(ctx, fix, i+1))
-			goto clean;
-		fprintf(stderr, "-----case1 unsat-----\n");
-		fprintf(stderr, "-----case2 >= -----\n");
-		/* case2: a.x != b ==> a.x >= b+1 ==> -a.x <= -b-1 */
+		pretty_print(ctx);
+		/* check relax variable */
+		for(i = 0; i < ctx->m; i++)
+		{
+			if(XINT_R(ctx->bl[i]))
+				continue;
+			break;
+		}
+		if(i == ctx->m)
+			break;
+		/* find suitable non-basic variable */
 		for(j = 0; j < ctx->n; j++)
-			ctx2->t[i][j] = Qneg(ctx2->t[i][j]);
-
-		ctx2->bv[i] = Qsub(Qneg(ctx2->bv[i]), Qint(1));
-		if(ret = do_fix_solve(ctx2, fix, i+1))
-			goto clean;
-		ret = 0;
-		fprintf(stderr, "-----case2 unsat-----\n");
-	clean:
-		simplex_del_ctx(ctx2);
-		return ret;
+		{
+			if(Qsign(ctx->t[i][j]) == 0)
+			  continue;
+			if(XINT_O(ctx->nl[j]))
+				continue;
+			break;
+		}
+		if(j == ctx->n)
+			break;
+		/* pivot */
+		ctx->av[j] = get_basic(ctx, i);
+		pivot(ctx, i, j);
 	}
-	return do_fix_solve(ctx, fix, i+1);
+	for(i = 0; i < ctx->m; i++)
+	{
+		for(j = 0; j < ctx->n; j++)
+		{
+			int sign = Qsign(ctx->t[i][j]);
+			if(sign > 0)
+				ub[j] = 1;
+			else if(sign < 0)
+				lb[j] = 1;
+		}
+	}
+	for(j = 0; j < ctx->n; j++)
+	{
+		if(ub[j] && lb[j])
+		{
+			fprintf(stderr, "x%d is bounded\n", XINT(ctx->nl[j]));
+			fprintf(stderr, "I assert x%d=", XINT(ctx->nl[j]));
+			Qprint(ctx->av[j]);
+			fprintf(stderr, "\n");
+			/* equal_addeq */
+			/* equal_test */
+			/* if(unsat) mk a new simplex_ctx with xi!=bi then arith_test */
+			/* if(sat) return 0 */
+		}
+	}
+	fprintf(stderr, "bound check end\n");
+	return 1;
 }
 
 int arith_test(LitSet *ls)
@@ -514,10 +600,15 @@ int arith_test(LitSet *ls)
 	memset(varmap, -1, sizeof(varmap));
 	m = count_m(ls);
 	n = count_n(varmap, ls);
+	for(i = 0; i < 64; i++)
+		if(varmap[i] != -1) {
+			fprintf(stderr, "x%d=", varmap[i]);
+			func_print(i, stderr);
+			fprintf(stderr, "\n");
+		}
 	ctx = simplex_new_ctx(n, m);
-	int fix[m];
-	cons_ctx(ctx, varmap, fix, ls);
-	if(do_fix_solve(ctx, fix, 0) == 0)
+	cons_ctx(ctx, varmap, ls);
+	if(simplex_solve(ctx) == 0)
 	{
 		fprintf(stderr, "unsat\n");
 		ls1 = litset_new();
@@ -526,7 +617,8 @@ int arith_test(LitSet *ls)
 		id = gamma_add(ls1);
 		return 1;
 	}
-	fprintf(stderr, "sat\n");
+	fprintf(stderr, "sat\ncheck bound\n");
+	bound_test(ctx);
 	return 0;
 }
 
