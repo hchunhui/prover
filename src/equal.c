@@ -1,43 +1,70 @@
 #include "comm.h"
 #include "equal.h"
+#include <stdlib.h>
 #include <string.h>
 
-static int get_fa(int *fa, int v)
+struct equal_ctx
 {
-	if(fa[v] == v)
-		return v;
-	else
-		return  get_fa(fa, fa[v]);
-}
+	int fa[64];
+};
 
-static void set_init(int *fa)
+struct equal_ctx
+*equal_new_ctx()
 {
 	int i;
-	for(i = 0; i < 64; i++) {
-		fa[i] = i;
-	}
+	struct equal_ctx *ctx;
+	ctx = malloc(sizeof(struct equal_ctx));
+	for(i = 0; i < 64; i++)
+		ctx->fa[i] = i;
+	return ctx;
 }
 
-static int set_find(int *fa, int idx, int idy)
+struct equal_ctx
+*equal_dup_ctx(struct equal_ctx *ctx0)
 {
-	int fx = get_fa(fa, idx);
-	int fy = get_fa(fa, idy);
+	struct equal_ctx *ctx;
+	ctx = malloc(sizeof(struct equal_ctx));
+	memcpy(ctx, ctx0, sizeof(struct equal_ctx));
+	return ctx;
+}
+
+void 
+equal_del_ctx(struct equal_ctx *ctx)
+{
+	free(ctx);
+}
+
+int
+equal_get_father(struct equal_ctx *ctx, int v)
+{
+	if(ctx->fa[v] == v)
+		return v;
+	else
+		return  equal_get_father(ctx, ctx->fa[v]);
+}
+
+int
+equal_query_eq(struct equal_ctx *ctx, int idx, int idy)
+{
+	int fx = equal_get_father(ctx, idx);
+	int fy = equal_get_father(ctx, idy);
 	return fx == fy;
 }
 
-static int set_union(int *fa, int idx, int idy)
+int
+equal_add_eq(struct equal_ctx *ctx, int idx, int idy)
 {
-	int fx, fy;
-	fx = get_fa(fa, idx);
-	fy = get_fa(fa, idy);
+	int fx = equal_get_father(ctx, idx);
+	int fy = equal_get_father(ctx, idy);
 	if(fy != fx) {
-		fa[fx]=fy;
+		ctx->fa[fx]=fy;
 		return 1;
 	}
 	return 0;
 }
 
-static int equal_closure(int *fa)
+int
+equal_closure(struct equal_ctx *ctx)
 {
 	int i, j, k;
 	struct func f1, f2;
@@ -55,25 +82,24 @@ static int equal_closure(int *fa)
 			if(f2.type == -1 || strcmp(fi1.name, fi2.name))
 				continue;
 			for(k = 0; k < fi1.n; k++)
-				if(!set_find(fa, f1.arr[k], f2.arr[k]))
+				if(!equal_query_eq(ctx, f1.arr[k], f2.arr[k]))
 					break;
 			if(k == fi1.n)
-				if(set_union(fa, i, j))
+				if(equal_add_eq(ctx, i, j))
 					flag = 1;
 		}
 	}
 	return flag;
 }
 
-int equal_test(LitSet *env)
+int
+equal_test(struct equal_ctx *ctx, LitSet *env)
 {
 	int i, id;
 	struct pred q;
 	LitSet *ls, *ls1;
-	int fa[64];
 	int ret;
 	ret = 0;
-	set_init(fa);
 	ls = litset_new();
 	for(i = 0; i < env->n; i++)
 	{
@@ -82,7 +108,7 @@ int equal_test(LitSet *env)
 		pred_get(&q, env->mem[i].id);
 		if(q.type != P_EQU)
 			continue;
-		set_union(fa, q.lv, q.rv);
+		equal_add_eq(ctx, q.lv, q.rv);
 		litset_add(ls, lit_make(1, env->mem[i].id));
 	}
 
@@ -94,17 +120,17 @@ int equal_test(LitSet *env)
 		if(q.type != P_EQU)
 			continue;
 		do {
-			if(set_find(fa, q.lv, q.rv))
+			if(equal_query_eq(ctx, q.lv, q.rv))
 			{
 				ls1 = litset_dup(ls);
 				litset_add(ls1, lit_make(0, env->mem[i].id));
 				id = gamma_add(ls1);
-				gamma_add_proof(id, equal_proof, NULL);
+//				gamma_add_proof(id, equal_proof, NULL);
 				ret = 1;
 				return ret;
 				break;
 			}
-		} while(equal_closure(fa));
+		} while(equal_closure(ctx));
 	}
 	litset_del(ls);
 	return ret;

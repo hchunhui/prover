@@ -44,6 +44,12 @@ void prove_dpll_proof_free(int seq, LitSet *cl, void *extra)
 
 static int add_clause(LitSet *env)
 {
+	int ret;
+	struct equal_ctx *ectx;
+	ectx = equal_new_ctx();
+	ret = equal_test(ectx, env);
+	equal_del_ctx(ectx);
+	return ret;
 	//return equal_test(env);
 	return arith_test(env);
 	return 0;
