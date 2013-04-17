@@ -9,7 +9,8 @@ int equal_get_father(struct equal_ctx *ctx, int v);
 int equal_query_eq(struct equal_ctx *ctx, int idx, int idy);
 int equal_add_eq(struct equal_ctx *ctx, int idx, int idy);
 int equal_closure(struct equal_ctx *ctx);
-int equal_test(struct equal_ctx *ctx, LitSet *env);
+int equal_test(struct equal_ctx *ctx);
+struct equal_ctx *equal_build_env(LitSet *env);
 
 void equal_proof(int seq, LitSet *ls, void *extra);
 

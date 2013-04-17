@@ -5,7 +5,10 @@
 
 struct equal_ctx
 {
+	int dis_n;
+	int diseq[64];
 	int fa[64];
+	LitSet *env;
 };
 
 struct equal_ctx
@@ -16,6 +19,8 @@ struct equal_ctx
 	ctx = malloc(sizeof(struct equal_ctx));
 	for(i = 0; i < 64; i++)
 		ctx->fa[i] = i;
+	ctx->dis_n = 0;
+	ctx->env = NULL;
 	return ctx;
 }
 
@@ -25,12 +30,15 @@ struct equal_ctx
 	struct equal_ctx *ctx;
 	ctx = malloc(sizeof(struct equal_ctx));
 	memcpy(ctx, ctx0, sizeof(struct equal_ctx));
+	if(ctx0->env)
+		ctx->env = litset_dup(ctx0->env);
 	return ctx;
 }
 
 void 
 equal_del_ctx(struct equal_ctx *ctx)
 {
+	litset_del(ctx->env);
 	free(ctx);
 }
 
@@ -92,46 +100,49 @@ equal_closure(struct equal_ctx *ctx)
 	return flag;
 }
 
+struct equal_ctx
+*equal_build_env(LitSet *env)
+{
+	struct equal_ctx *ctx;
+	int i;
+	struct pred q;
+	ctx = equal_new_ctx();
+	ctx->env = litset_new();
+	for(i = 0; i < env->n; i++)
+	{
+		pred_get(&q, env->mem[i].id);
+		if(q.type != P_EQU)
+			continue;
+		if(env->mem[i].neg)
+			ctx->diseq[ctx->dis_n++] = env->mem[i].id;
+		else
+		{
+			litset_add(ctx->env, lit_make(1, env->mem[i].id));
+			equal_add_eq(ctx, q.lv, q.rv);
+		}
+	}
+	return ctx;
+}
+
 int
-equal_test(struct equal_ctx *ctx, LitSet *env)
+equal_test(struct equal_ctx *ctx)
 {
 	int i, id;
 	struct pred q;
-	LitSet *ls, *ls1;
-	int ret;
-	ret = 0;
-	ls = litset_new();
-	for(i = 0; i < env->n; i++)
+	LitSet *ls1;
+	for(;equal_closure(ctx);)
+		/* null */;
+	for(i = 0; i < ctx->dis_n; i++)
 	{
-		if(env->mem[i].neg)
-			continue;
-		pred_get(&q, env->mem[i].id);
-		if(q.type != P_EQU)
-			continue;
-		equal_add_eq(ctx, q.lv, q.rv);
-		litset_add(ls, lit_make(1, env->mem[i].id));
+		pred_get(&q, ctx->diseq[i]);
+		if(equal_query_eq(ctx, q.lv, q.rv))
+		{
+			ls1 = litset_dup(ctx->env);
+			litset_add(ls1, lit_make(0, ctx->diseq[i]));
+			id = gamma_add(ls1);
+//			gamma_add_proof(id, equal_proof, NULL);
+			return 1;
+		}
 	}
-
-	for(i = 0; i < env->n; i++)
-	{
-		if(!env->mem[i].neg)
-			continue;
-		pred_get(&q, env->mem[i].id);
-		if(q.type != P_EQU)
-			continue;
-		do {
-			if(equal_query_eq(ctx, q.lv, q.rv))
-			{
-				ls1 = litset_dup(ls);
-				litset_add(ls1, lit_make(0, env->mem[i].id));
-				id = gamma_add(ls1);
-//				gamma_add_proof(id, equal_proof, NULL);
-				ret = 1;
-				return ret;
-				break;
-			}
-		} while(equal_closure(ctx));
-	}
-	litset_del(ls);
-	return ret;
+	return 0;
 }

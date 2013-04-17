@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "comm.h"
+#include "arith.h"
+#include "equal.h"
 
 struct qnum
 {
@@ -124,6 +126,8 @@ struct simplex_ctx
 	xint *bl;	/* 基变量列表 m */
 	Q   *av;	/* 非基变量赋值 n */
 	Q   *bv;	/* 松弛变量界 m */
+	int varmap[64];
+	LitSet *env;
 };
 
 struct simplex_ctx
@@ -145,6 +149,8 @@ struct simplex_ctx
 		ctx->bl[i] = XINT_SR(i);
 	for(i = 0; i < n; i++)
 		ctx->nl[i] = XINT_SO(i);
+	memset(ctx->varmap, -1, sizeof(int)*64);
+	ctx->env = NULL;
 	return ctx;
 }
 
@@ -159,6 +165,7 @@ simplex_del_ctx(struct simplex_ctx *ctx)
 	free(ctx->bl);
 	free(ctx->av);
 	free(ctx->bv);
+	litset_del(ctx->env);
 	free(ctx);
 }
 
@@ -174,6 +181,9 @@ struct simplex_ctx
 	memcpy(ctx2->bl, ctx->bl, sizeof(xint)*ctx->m);
 	memcpy(ctx2->av, ctx->av, sizeof(Q)*ctx->n);
 	memcpy(ctx2->bv, ctx->bv, sizeof(Q)*ctx->m);
+	memcpy(ctx2->varmap, ctx->varmap, sizeof(int)*64);
+	if(ctx->env)
+		ctx2->env = litset_dup(ctx->env);
 	return ctx2;
 }
 
@@ -288,46 +298,6 @@ int simplex_solve(struct simplex_ctx *ctx)
 		/* pivot */
 		pivot(ctx, i, j);
 	}
-}
-
-static void printh(struct simplex_ctx *ctx)
-{
-	int i, j;
-	for(i = 0; i < ctx->m; i++)
-	{
-		printf("Hypothesis H%d:", i);
-		printf("%s%d=", XINT_O(ctx->bl[i])?"x":"s", XINT(ctx->bl[i]));
-		printf("(%d)*%s%d", ctx->t[i][0].p, XINT_O(ctx->nl[0])?"x":"s", XINT(ctx->nl[0]));
-		for(j = 1; j < ctx->n; j++)
-			printf("+(%d)*%s%d", ctx->t[i][j].p, XINT_O(ctx->nl[j])?"x":"s", XINT(ctx->nl[j]));
-		printf(".\n");
-	}
-}
-
-static void printb(struct simplex_ctx *ctx)
-{
-	int i;
-	for(i = 0; i < ctx->m; i++)
-	{
-		printf("Hypothesis B%d:", i);
-		printf("s%d <= %d.\n", i, ctx->bv[i].p);
-	}
-}
-
-void simplex_proof(struct simplex_ctx *ctx)
-{
-	int i;
-	printf("Section simplex.\n");
-	printf("Variable");
-	for(i = 0; i < ctx->n; i++)
-		printf(" x%d", i);
-	for(i = 0; i < ctx->m; i++)
-		printf(" s%d", i);
-	printf(":Z.\n");
-	printh(ctx);
-	printb(ctx);
-//	proof(ctx);
-	printf("End simplex.\nCheck L.\n");
 }
 
 static void __count_n(int i, int *varmap, int *n, int flag)
@@ -478,7 +448,7 @@ static void __cons_ctx(struct simplex_ctx *ctx, int c[64+1], int type, int neg, 
 	}
 }
 
-static void cons_ctx_purify(struct simplex_ctx *ctx, int *varmap, int fid, int flag, int *m)
+static void cons_ctx_purify(struct simplex_ctx *ctx, int fid, int flag, int *m)
 {
 	int i;
 	struct func f;
@@ -488,20 +458,19 @@ static void cons_ctx_purify(struct simplex_ctx *ctx, int *varmap, int fid, int f
 	if((strcmp(fi.name,"+") == 0 || strcmp(fi.name, ".") == 0) && flag)
 	{
 		memset(c, 0, sizeof(c));
-		cons_single(fid, varmap, c, 1);
-		c[varmap[fid]] -= 1;
+		cons_single(fid, ctx->varmap, c, 1);
+		c[ctx->varmap[fid]] -= 1;
 		__cons_ctx(ctx, c, P_EQU, 0, m);
 		flag = 0;
 	}
 	else 
 		flag = 1;
 	for(i = 0; i < fi.n; i++)
-		cons_ctx_purify(ctx, varmap, f.arr[i], flag, m);
+		cons_ctx_purify(ctx, f.arr[i], flag, m);
 }
 
 static void cons_ctx(
 	struct simplex_ctx *ctx,
-	int *varmap,
 	LitSet *ls)
 {
 
@@ -516,16 +485,16 @@ static void cons_ctx(
 		if(p.type == P_EQU || p.type == P_LE)
 		{
 			memset(c, 0, sizeof(c));
-			cons_single(p.lv, varmap, c, 1);
-			cons_single(p.rv, varmap, c, -1);
+			cons_single(p.lv, ctx->varmap, c, 1);
+			cons_single(p.rv, ctx->varmap, c, -1);
 			__cons_ctx(ctx, c, p.type, ls->mem[i].neg, &m);
-			cons_ctx_purify(ctx, varmap, p.lv, 0, &m);
-			cons_ctx_purify(ctx, varmap, p.rv, 0, &m);
+			cons_ctx_purify(ctx, p.lv, 0, &m);
+			cons_ctx_purify(ctx, p.rv, 0, &m);
 		}
 	}
 }
 
-static int bound_test(struct simplex_ctx *ctx)
+static int push_eqs(struct simplex_ctx *ctx, struct equal_ctx *ectx)
 {
 	int i, j;
 	int ub[ctx->n], lb[ctx->n];
@@ -589,17 +558,20 @@ static int bound_test(struct simplex_ctx *ctx)
 	return 1;
 }
 
-int arith_test(LitSet *ls)
+static int pull_eqs(struct simplex_ctx *ctx, struct equal_ctx *ectx)
+{
+	return 1;
+}
+
+struct simplex_ctx *arith_build_env(LitSet *env)
 {
 	int i;
 	int m, n;
-	int id;
-	int varmap[64];
-	LitSet *ls1;
 	struct simplex_ctx *ctx;
+	int varmap[64];
 	memset(varmap, -1, sizeof(varmap));
-	m = count_m(ls);
-	n = count_n(varmap, ls);
+	m = count_m(env);
+	n = count_n(varmap, env);
 	for(i = 0; i < 64; i++)
 		if(varmap[i] != -1) {
 			fprintf(stderr, "x%d=", varmap[i]);
@@ -607,52 +579,27 @@ int arith_test(LitSet *ls)
 			fprintf(stderr, "\n");
 		}
 	ctx = simplex_new_ctx(n, m);
-	cons_ctx(ctx, varmap, ls);
+	memcpy(ctx->varmap, varmap, sizeof(varmap));
+	cons_ctx(ctx, env);
+	ctx->env = litset_dup(env);
+	return ctx;
+}
+
+int arith_test(struct simplex_ctx *ctx, struct equal_ctx *ectx)
+{
+	int i, id;
+	LitSet *ls1;
+	pull_eqs(ctx, ectx);
 	if(simplex_solve(ctx) == 0)
 	{
 		fprintf(stderr, "unsat\n");
 		ls1 = litset_new();
-		for(i = 0; i < ls->n; i++)
-			litset_add(ls1, lit_make(!ls->mem[i].neg, ls->mem[i].id));
+		for(i = 0; i < ctx->env->n; i++)
+			litset_add(ls1, lit_make(!ctx->env->mem[i].neg, ctx->env->mem[i].id));
 		id = gamma_add(ls1);
 		return 1;
 	}
 	fprintf(stderr, "sat\ncheck bound\n");
-	bound_test(ctx);
+	push_eqs(ctx, ectx);
 	return 0;
 }
-
-#if 0
-int main(int argc, char *argv[])
-{
-	struct simplex_ctx *ctx;
-	ctx = simplex_new_ctx(2, 3);
-	ctx->t[0][0] = Qint(-1);
-	ctx->t[0][1] = Qint(0);
-	ctx->t[1][0] = Qint(0);
-	ctx->t[1][1] = Qint(-1);
-	ctx->t[2][0] = Qint(1);
-	ctx->t[2][1] = Qint(1);
-	ctx->bv[0] = Qint(-1);
-	ctx->bv[1] = Qint(-1);
-	ctx->bv[2] = Qint(1);
-	/* ctx = simplex_new_ctx(2, 3); */
-	/* ctx->t[0][0] = Qint(-1); */
-	/* ctx->t[0][1] = Qint(-1); */
-	/* ctx->t[1][0] = Qint(-2); */
-	/* ctx->t[1][1] = Qint(1); */
-	/* ctx->t[2][0] = Qint(1); */
-	/* ctx->t[2][1] = Qint(-2); */
-	/* ctx->bv[0] = Qint(-2); */
-	/* ctx->bv[1] = Qint(0); */
-	/* ctx->bv[2] = Qint(-1); */
-	if(simplex_solve(ctx) == 1)
-		fprintf(stderr, "sat\n");
-	else
-	{
-		fprintf(stderr, "unsat\n");
-		simplex_proof(ctx);
-	}
-	return 0;
-}
-#endif

@@ -7,7 +7,7 @@
 #include "equal.h"
 #include "arith.h"
 
-static jmp_buf env;
+static jmp_buf jmp_env;
 
 static char *pool, *poolp;
 
@@ -45,14 +45,17 @@ void prove_dpll_proof_free(int seq, LitSet *cl, void *extra)
 static int add_clause(LitSet *env)
 {
 	int ret;
+	struct simplex_ctx *sctx;
 	struct equal_ctx *ectx;
-	ectx = equal_new_ctx();
-	ret = equal_test(ectx, env);
+
+	sctx = arith_build_env(env);
+	ectx = equal_build_env(env);
+	ret = equal_test(ectx);
+	if(ret != 1)
+		ret = arith_test(sctx, ectx);
 	equal_del_ctx(ectx);
+	simplex_del_ctx(sctx);
 	return ret;
-	//return equal_test(env);
-	return arith_test(env);
-	return 0;
 }
 
 static struct dpll_tree
@@ -65,7 +68,7 @@ static struct dpll_tree
 		fprintf(stderr, "assign found:");
 		litset_print(pasgn, 0, "/\\", stderr);
 		fprintf(stderr, "\n");
-		longjmp(env, 1);
+		longjmp(jmp_env, 1);
 	}
 	tr = pool_get(sizeof(struct dpll_tree));
 	tr->t = NULL;
@@ -115,7 +118,7 @@ int prove_dpll()
 	/* 搜索并证明 */
 	pool_init();
 	asgn = litset_new();
-	if(!setjmp(env))
+	if(!setjmp(jmp_env))
 	{
 		tr = __prove_dpll(0, asgn, cls);
 		id = gamma_add(asgn);
