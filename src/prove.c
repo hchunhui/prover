@@ -47,11 +47,10 @@ static int add_clause(LitSet *env)
 	int ret;
 	struct simplex_ctx *sctx;
 	struct equal_ctx *ectx;
-
 	sctx = arith_build_env(env);
 	ectx = equal_build_env(env);
-	ret = equal_test(ectx);
-	if(ret != 1)
+	ret = equal_test(ectx, sctx);
+	if(ret == 0)
 		ret = arith_test(sctx, ectx);
 	equal_del_ctx(ectx);
 	simplex_del_ctx(sctx);

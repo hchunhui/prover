@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include "comm.h"
 #include "arith.h"
 #include "equal.h"
@@ -170,11 +171,14 @@ simplex_del_ctx(struct simplex_ctx *ctx)
 }
 
 struct simplex_ctx
-*simplex_dup_ctx(struct simplex_ctx *ctx)
+*simplex_dup_ctx(struct simplex_ctx *ctx, int flag)
 {
 	int i;
 	struct simplex_ctx *ctx2;
-	ctx2 = simplex_new_ctx(ctx->n, ctx->m);
+	if(flag)
+		ctx2 = simplex_new_ctx(ctx->n, ctx->m+1);
+	else
+		ctx2 = simplex_new_ctx(ctx->n, ctx->m);
 	for(i = 0; i < ctx->m; i++)
 		memcpy(ctx2->t[i], ctx->t[i], sizeof(Q)*ctx->n);
 	memcpy(ctx2->nl, ctx->nl, sizeof(xint)*ctx->n);
@@ -199,6 +203,7 @@ static Q get_basic(struct simplex_ctx *ctx, int i)
 
 static void pretty_print(struct simplex_ctx *ctx)
 {
+	//return;
 	int i, j;
 	fprintf(stderr, "     ");
 	for(j = 0; j < ctx->n; j++)
@@ -257,7 +262,6 @@ int simplex_solve(struct simplex_ctx *ctx)
 		ctx->av[i] = Qint(0);
 	for(;;)
 	{
-		pretty_print(ctx);
 		/* check relax variable */
 		for(i = 0; i < ctx->m; i++)
 		{
@@ -269,7 +273,10 @@ int simplex_solve(struct simplex_ctx *ctx)
 				break;
 		}
 		if(i == ctx->m)
+		{
+			pretty_print(ctx);
 			return 1; /* sat */
+		}
 		/* find suitable non-basic variable */
 		for(j = 0; j < ctx->n; j++)
 		{
@@ -294,7 +301,10 @@ int simplex_solve(struct simplex_ctx *ctx)
 			}
 		}
 		if(j == ctx->n)
+		{
+			pretty_print(ctx);
 			return 0; /* unsat */
+		}
 		/* pivot */
 		pivot(ctx, i, j);
 	}
@@ -412,7 +422,6 @@ static void cons_single(int i, int *varmap, int *c, int add)
 		val = atoi(fi.name+1);
 		c[64] += add*val;
 	} else {
-		val = atoi(fi1.name+1);
 		c[varmap[i]] += add;
 	}
 }
@@ -498,13 +507,14 @@ static int push_eqs(struct simplex_ctx *ctx, struct equal_ctx *ectx)
 {
 	int i, j;
 	int ub[ctx->n], lb[ctx->n];
+	struct equal_ctx *ectx1;
+	struct simplex_ctx *ctx1;
 	for(j = 0; j < ctx->n; j++)
 		ub[j] = 0;
 	for(j = 0; j < ctx->n; j++)
 		lb[j] = 0;
 	for(;;)
 	{
-		pretty_print(ctx);
 		/* check relax variable */
 		for(i = 0; i < ctx->m; i++)
 		{
@@ -529,6 +539,7 @@ static int push_eqs(struct simplex_ctx *ctx, struct equal_ctx *ectx)
 		ctx->av[j] = get_basic(ctx, i);
 		pivot(ctx, i, j);
 	}
+	pretty_print(ctx);
 	for(i = 0; i < ctx->m; i++)
 	{
 		for(j = 0; j < ctx->n; j++)
@@ -544,23 +555,126 @@ static int push_eqs(struct simplex_ctx *ctx, struct equal_ctx *ectx)
 	{
 		if(ub[j] && lb[j])
 		{
+			char num[16];
+			int idx, idy;
+			int k;
+			for(idx = 0; idx < 64; idx++)
+				if(ctx->varmap[idx] == XINT(ctx->nl[j]))
+				   break;
+			assert(idx < 64);
+			sprintf(num, "@%d", ctx->av[j].p);
+			idy = func_new(func_info_new(num, 0), -1, -1);
+
 			fprintf(stderr, "x%d is bounded\n", XINT(ctx->nl[j]));
 			fprintf(stderr, "I assert x%d=", XINT(ctx->nl[j]));
 			Qprint(ctx->av[j]);
 			fprintf(stderr, "\n");
-			/* equal_addeq */
-			/* equal_test */
-			/* if(unsat) mk a new simplex_ctx with xi!=bi then arith_test */
-			/* if(sat) return 0 */
+
+			/* case 1: xi=bi */
+			fprintf(stderr, "===xi=bi===\n");
+			ectx1 = equal_dup_ctx(ectx);
+			equal_add_eq(ectx1, idx, idy);
+			if(equal_test(ectx1, ctx) == 0)
+			{
+				equal_del_ctx(ectx1);
+				fprintf(stderr, "xi=bi sat\n");
+				continue;
+			}
+			equal_del_ctx(ectx1);
+			/* case2: xi<=bi-1 */
+			fprintf(stderr, "===xi<bi===\n");
+			ctx1 = simplex_dup_ctx(ctx, 1);
+			for(k = 0; k < ctx1->n; k++)
+				ctx1->t[ctx->m][k] = Qint(0);
+			ctx1->t[ctx->m][ctx->nl[j]] = Qint(1);
+			ctx1->bl[ctx->m] = XINT_SR(ctx->m);
+			ctx1->bv[ctx->m] = Qsub(ctx->av[j], Qint(1));
+			if(arith_test(ctx1, ectx) == 0)
+			{
+				simplex_del_ctx(ctx1);
+				fprintf(stderr, "xi<bi sat\n");
+				continue;
+			}
+			simplex_del_ctx(ctx1);
+			/* case3: -xi <= -bi-1 */
+			fprintf(stderr, "===xi>bi===\n");
+			ctx1 = simplex_dup_ctx(ctx, 1);
+			for(k = 0; k < ctx1->n; k++)
+				ctx1->t[ctx->m][k] = Qint(0);
+			ctx1->t[ctx->m][ctx->nl[j]] = Qint(-1);
+			ctx1->bl[ctx->m] = XINT_SR(ctx->m);
+			ctx1->bv[ctx->m] = Qsub(Qneg(ctx->av[j]), Qint(1));
+			if(arith_test(ctx1, ectx) == 0)
+			{
+				simplex_del_ctx(ctx1);
+				fprintf(stderr, "xi>bi sat\n");
+				continue;
+			}
+			simplex_del_ctx(ctx1);
+			fprintf(stderr, "bound check ok\n");
+			return 1;
 		}
 	}
-	fprintf(stderr, "bound check end\n");
-	return 1;
+	fprintf(stderr, "bound check fail\n");
+	return 0;
 }
 
-static int pull_eqs(struct simplex_ctx *ctx, struct equal_ctx *ectx)
+static void pull_eqs(struct simplex_ctx *ctx, struct equal_ctx *ectx)
 {
-	return 1;
+	/* eq rewrite */
+	int i, k;
+	int v;
+	struct func f;
+	struct func_info fi;
+	for(k = 0; k < 64; k++)
+	{
+		if(ctx->varmap[k] != -1)
+		{
+			v = equal_get_father(ectx, k);
+			if(k != v)
+			{
+				if(ctx->varmap[v] != -1)
+				{
+					fprintf(stderr, "rewrite x%d",ctx->varmap[k]);
+					func_print(k, stderr);
+					fprintf(stderr, " using x%d", ctx->varmap[v]);
+					func_print(v, stderr);
+					fprintf(stderr, "\n");
+					for(i = 0; i < ctx->m; i++)
+					{
+						ctx->t[i][ctx->varmap[v]] =
+							Qadd(ctx->t[i][ctx->varmap[v]],
+							     ctx->t[i][ctx->varmap[k]]);
+						ctx->t[i][ctx->varmap[k]] = Qint(0);
+					}
+				}
+				else
+				{
+					fprintf(stderr, "replace x%d",ctx->varmap[k]);
+					func_print(k, stderr);
+					fprintf(stderr, " using ");
+					func_print(v, stderr);
+					fprintf(stderr, "\n");
+					func_get(&f, &fi, v);
+					if(fi.name[0] != '@')
+					{
+						ctx->varmap[v] = ctx->varmap[k];
+						ctx->varmap[k] = -1;
+					}
+					else
+					{
+						int c = atoi(fi.name+1);
+						for(i = 0; i < ctx->m; i++)
+						{
+							ctx->t[i][ctx->varmap[k]] = Qint(0);
+							ctx->bv[i] = Qsub(ctx->bv[i],
+									  Qint(c));
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 struct simplex_ctx *arith_build_env(LitSet *env)
@@ -589,6 +703,8 @@ int arith_test(struct simplex_ctx *ctx, struct equal_ctx *ectx)
 {
 	int i, id;
 	LitSet *ls1;
+	if(ctx->m == 0)
+		return 0;
 	pull_eqs(ctx, ectx);
 	if(simplex_solve(ctx) == 0)
 	{
@@ -600,6 +716,5 @@ int arith_test(struct simplex_ctx *ctx, struct equal_ctx *ectx)
 		return 1;
 	}
 	fprintf(stderr, "sat\ncheck bound\n");
-	push_eqs(ctx, ectx);
-	return 0;
+	return push_eqs(ctx, ectx);
 }
