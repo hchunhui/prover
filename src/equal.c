@@ -131,9 +131,7 @@ equal_test(struct equal_ctx *ctx, struct simplex_ctx *sctx)
 	struct pred q;
 	LitSet *ls1;
 	int flag;
-	flag = 0;
-	for(;equal_closure(ctx);)
-		flag = 1;
+	for(;equal_closure(ctx);) ;
 	for(i = 0; i < ctx->dis_n; i++)
 	{
 		pred_get(&q, ctx->diseq[i]);
@@ -146,7 +144,5 @@ equal_test(struct equal_ctx *ctx, struct simplex_ctx *sctx)
 			return 1;
 		}
 	}
-	if(flag)
-		return arith_test(sctx, ctx);
-	return 0;
+	return arith_test(sctx, ctx);
 }

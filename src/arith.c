@@ -573,7 +573,12 @@ static int push_eqs(struct simplex_ctx *ctx, struct equal_ctx *ectx)
 			/* case 1: xi=bi */
 			fprintf(stderr, "===xi=bi===\n");
 			ectx1 = equal_dup_ctx(ectx);
-			equal_add_eq(ectx1, idx, idy);
+			if(equal_add_eq(ectx1, idx, idy) == 0)
+			{
+				equal_del_ctx(ectx1);
+				fprintf(stderr, "xi=bi sat\n");
+				continue;
+			}
 			ctx1 = simplex_dup_ctx(ctx, 0);
 			if(equal_test(ectx1, ctx1) == 0)
 			{

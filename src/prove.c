@@ -50,8 +50,6 @@ static int add_clause(LitSet *env)
 	sctx = arith_build_env(env);
 	ectx = equal_build_env(env);
 	ret = equal_test(ectx, sctx);
-	if(ret == 0)
-		ret = arith_test(sctx, ectx);
 	equal_del_ctx(ectx);
 	simplex_del_ctx(sctx);
 	return ret;
