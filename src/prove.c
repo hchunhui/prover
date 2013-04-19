@@ -44,12 +44,21 @@ void prove_dpll_proof_free(int seq, LitSet *cl, void *extra)
 
 static int add_clause(LitSet *env)
 {
+	int i, id;
 	int ret;
+	LitSet *ls;
 	struct simplex_ctx *sctx;
 	struct equal_ctx *ectx;
 	sctx = arith_build_env(env);
 	ectx = equal_build_env(env);
 	ret = equal_test(ectx, sctx);
+	if(ret == 1)
+	{
+		ls = litset_new();
+		for(i = 0; i < env->n; i++)
+			litset_add(ls, lit_make(!env->mem[i].neg, env->mem[i].id));
+		id = gamma_add(ls);
+	}
 	equal_del_ctx(ectx);
 	simplex_del_ctx(sctx);
 	return ret;

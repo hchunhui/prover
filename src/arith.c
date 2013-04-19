@@ -128,7 +128,6 @@ struct simplex_ctx
 	Q   *av;	/* 非基变量赋值 n */
 	Q   *bv;	/* 松弛变量界 m */
 	int varmap[64];
-	LitSet *env;
 };
 
 struct simplex_ctx
@@ -151,7 +150,6 @@ struct simplex_ctx
 	for(i = 0; i < n; i++)
 		ctx->nl[i] = XINT_SO(i);
 	memset(ctx->varmap, -1, sizeof(int)*64);
-	ctx->env = NULL;
 	return ctx;
 }
 
@@ -166,7 +164,6 @@ simplex_del_ctx(struct simplex_ctx *ctx)
 	free(ctx->bl);
 	free(ctx->av);
 	free(ctx->bv);
-	litset_del(ctx->env);
 	free(ctx);
 }
 
@@ -186,8 +183,6 @@ struct simplex_ctx
 	memcpy(ctx2->av, ctx->av, sizeof(Q)*ctx->n);
 	memcpy(ctx2->bv, ctx->bv, sizeof(Q)*ctx->m);
 	memcpy(ctx2->varmap, ctx->varmap, sizeof(int)*64);
-	if(ctx->env)
-		ctx2->env = litset_dup(ctx->env);
 	return ctx2;
 }
 
@@ -703,24 +698,17 @@ struct simplex_ctx *arith_build_env(LitSet *env)
 	ctx = simplex_new_ctx(n, m);
 	memcpy(ctx->varmap, varmap, sizeof(varmap));
 	cons_ctx(ctx, env);
-	ctx->env = litset_dup(env);
 	return ctx;
 }
 
 int arith_test(struct simplex_ctx *ctx, struct equal_ctx *ectx)
 {
-	int i, id;
-	LitSet *ls1;
 	if(ctx->m == 0)
 		return 0;
 	pull_eqs(ctx, ectx);
 	if(simplex_solve(ctx) == 0)
 	{
 		fprintf(stderr, "unsat\n");
-		ls1 = litset_new();
-		for(i = 0; i < ctx->env->n; i++)
-			litset_add(ls1, lit_make(!ctx->env->mem[i].neg, ctx->env->mem[i].id));
-		id = gamma_add(ls1);
 		return 1;
 	}
 	fprintf(stderr, "sat\ncheck bound\n");
