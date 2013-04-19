@@ -398,8 +398,8 @@ static int count_m(LitSet *ls)
 		}
 		if(p.type != P_ATOM)
 		{
-			count += count_m_purify(p.lv, 0);
-			count += count_m_purify(p.rv, 0);
+			count += count_m_purify(p.lv, ls->mem[i].neg);
+			count += count_m_purify(p.rv, ls->mem[i].neg);
 		}
 	}
 	return count;
@@ -497,8 +497,8 @@ static void cons_ctx(
 			cons_single(p.lv, ctx->varmap, c, 1);
 			cons_single(p.rv, ctx->varmap, c, -1);
 			__cons_ctx(ctx, c, p.type, ls->mem[i].neg, &m);
-			cons_ctx_purify(ctx, p.lv, 0, &m);
-			cons_ctx_purify(ctx, p.rv, 0, &m);
+			cons_ctx_purify(ctx, p.lv, ls->mem[i].neg, &m);
+			cons_ctx_purify(ctx, p.rv, ls->mem[i].neg, &m);
 		}
 	}
 }
@@ -666,9 +666,9 @@ static void pull_eqs(struct simplex_ctx *ctx, struct equal_ctx *ectx)
 						int c = atoi(fi.name+1);
 						for(i = 0; i < ctx->m; i++)
 						{
-							ctx->t[i][ctx->varmap[k]] = Qint(0);
 							ctx->bv[i] = Qsub(ctx->bv[i],
-									  Qint(c));
+									  Qmul(ctx->t[i][ctx->varmap[k]], Qint(c)));
+							ctx->t[i][ctx->varmap[k]] = Qint(0);
 						}
 					}
 				}
