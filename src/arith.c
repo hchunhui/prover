@@ -553,11 +553,23 @@ static int push_eqs(struct simplex_ctx *ctx, struct equal_ctx *ectx)
 			char num[16];
 			int idx, idy;
 			int k;
+			int avj;
 
-			fprintf(stderr, "x%d is bounded\n", XINT(ctx->nl[j]));
-			fprintf(stderr, "I assert x%d=", XINT(ctx->nl[j]));
-			Qprint(ctx->av[j]);
-			fprintf(stderr, "\n");
+			fprintf(stderr, "x%d is bound\n", XINT(ctx->nl[j]));
+			avj = ctx->av[j].p;
+			if(ctx->av[j].q == 1)
+			{
+				fprintf(stderr, "I assert x%d=", XINT(ctx->nl[j]));
+				Qprint(ctx->av[j]);
+				fprintf(stderr, "\n");
+			}
+			else
+			{
+				fprintf(stderr, "x%d is not integer:", XINT(ctx->nl[j]));
+				Qprint(ctx->av[j]);
+				fprintf(stderr, "\n");
+				avj /= ctx->av[j].q;
+			}
 
 			/* case 1: xi=bi */
 			fprintf(stderr, "===xi=bi===\n");
@@ -566,7 +578,7 @@ static int push_eqs(struct simplex_ctx *ctx, struct equal_ctx *ectx)
 				if(ctx->varmap[idx] == XINT(ctx->nl[j]))
 					break;
 			assert(idx < 64);
-			sprintf(num, "@%d", ctx->av[j].p);
+			sprintf(num, "@%d", avj);
 			idy = func_new(func_info_new(num, 0), -1, -1);
 			if(equal_add_eq(ectx1, idx, idy) == 0)
 			{
@@ -591,7 +603,7 @@ static int push_eqs(struct simplex_ctx *ctx, struct equal_ctx *ectx)
 				ctx1->t[ctx->m][k] = Qint(0);
 			ctx1->t[ctx->m][ctx->nl[j]] = Qint(1);
 			ctx1->bl[ctx->m] = XINT_SR(ctx->m);
-			ctx1->bv[ctx->m] = Qsub(ctx->av[j], Qint(1));
+			ctx1->bv[ctx->m] = Qint(avj - 1);
 			if(arith_test(ctx1, ectx) == 0)
 			{
 				simplex_del_ctx(ctx1);
@@ -606,7 +618,7 @@ static int push_eqs(struct simplex_ctx *ctx, struct equal_ctx *ectx)
 				ctx1->t[ctx->m][k] = Qint(0);
 			ctx1->t[ctx->m][ctx->nl[j]] = Qint(-1);
 			ctx1->bl[ctx->m] = XINT_SR(ctx->m);
-			ctx1->bv[ctx->m] = Qsub(Qneg(ctx->av[j]), Qint(1));
+			ctx1->bv[ctx->m] = Qint(-(avj + 1));
 			if(arith_test(ctx1, ectx) == 0)
 			{
 				simplex_del_ctx(ctx1);
