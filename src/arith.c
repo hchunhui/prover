@@ -553,12 +553,6 @@ static int push_eqs(struct simplex_ctx *ctx, struct equal_ctx *ectx)
 			char num[16];
 			int idx, idy;
 			int k;
-			for(idx = 0; idx < 64; idx++)
-				if(ctx->varmap[idx] == XINT(ctx->nl[j]))
-				   break;
-			assert(idx < 64);
-			sprintf(num, "@%d", ctx->av[j].p);
-			idy = func_new(func_info_new(num, 0), -1, -1);
 
 			fprintf(stderr, "x%d is bounded\n", XINT(ctx->nl[j]));
 			fprintf(stderr, "I assert x%d=", XINT(ctx->nl[j]));
@@ -568,6 +562,12 @@ static int push_eqs(struct simplex_ctx *ctx, struct equal_ctx *ectx)
 			/* case 1: xi=bi */
 			fprintf(stderr, "===xi=bi===\n");
 			ectx1 = equal_dup_ctx(ectx);
+			for(idx = 0; idx < 64; idx++)
+				if(ctx->varmap[idx] == XINT(ctx->nl[j]))
+					break;
+			assert(idx < 64);
+			sprintf(num, "@%d", ctx->av[j].p);
+			idy = func_new(func_info_new(num, 0), -1, -1);
 			if(equal_add_eq(ectx1, idx, idy) == 0)
 			{
 				equal_del_ctx(ectx1);
