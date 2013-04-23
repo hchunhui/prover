@@ -6,6 +6,7 @@
 #include "dpll.h"
 #include "equal.h"
 #include "arith.h"
+#include "theory.h"
 
 static jmp_buf jmp_env;
 
@@ -47,11 +48,10 @@ static int add_clause(LitSet *env)
 	int i, id;
 	int ret;
 	LitSet *ls;
-	struct simplex_ctx *sctx;
-	struct equal_ctx *ectx;
-	sctx = arith_build_env(env);
-	ectx = equal_build_env(env);
-	ret = equal_test(ectx, sctx);
+	struct theory_tree *tt;
+	tt = theory_tree_new(arith_build_env(env),
+			     equal_build_env(env));
+	ret = equal_test(tt);
 	if(ret == 1)
 	{
 		ls = litset_new();
@@ -59,8 +59,6 @@ static int add_clause(LitSet *env)
 			litset_add(ls, lit_make(!env->mem[i].neg, env->mem[i].id));
 		id = gamma_add(ls);
 	}
-	equal_del_ctx(ectx);
-	simplex_del_ctx(sctx);
 	return ret;
 }
 

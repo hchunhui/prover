@@ -116,16 +116,16 @@ struct equal_ctx
 }
 
 int
-equal_test(struct equal_ctx *ctx, struct simplex_ctx *sctx)
+equal_test(struct theory_tree *tt)
 {
 	int i;
 	struct pred q;
-	for(;equal_closure(ctx);) ;
-	for(i = 0; i < ctx->dis_n; i++)
+	for(;equal_closure(tt->ectx);) ;
+	for(i = 0; i < tt->ectx->dis_n; i++)
 	{
-		pred_get(&q, ctx->diseq[i]);
-		if(equal_query_eq(ctx, q.lv, q.rv))
+		pred_get(&q, tt->ectx->diseq[i]);
+		if(equal_query_eq(tt->ectx, q.lv, q.rv))
 			return 1;
 	}
-	return arith_test(sctx, ctx);
+	return arith_test(tt);
 }
