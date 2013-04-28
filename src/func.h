@@ -15,6 +15,7 @@ struct func_info
 };
 
 void func_print(int id, FILE *fp);
+void func_print_pure(int id, FILE *fp);
 int func_search(int type, int arg1, int arg2);
 int func_new(int type, int arg1, int arg2);
 void func_decl(FILE *fp);

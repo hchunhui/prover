@@ -263,7 +263,7 @@ int simplex_solve(struct simplex_ctx *ctx)
 			if(XINT_O(ctx->bl[i]))
 				continue;
 			sum = get_basic(ctx, i);
-			diff = Qsub(sum, ctx->bv[i]);
+			diff = Qsub(sum, ctx->bv[XINT(ctx->bl[i])]);
 			if(Qsign(diff) > 0)
 				break;
 		}
@@ -359,11 +359,13 @@ static int count_m_purify(int fid, int flag)
 	int count;
 	count = 0;
 	func_get(&f, &fi, fid);
-	if((strcmp(fi.name,"+") == 0 || strcmp(fi.name, ".") == 0) &&
-	   flag)
+	if(strcmp(fi.name,"+") == 0 || strcmp(fi.name, ".") == 0)
 	{
-		count += 2;
-		flag = 0;
+		if(flag)
+		{
+			count += 2;
+			flag = 0;
+		}
 	}
 	else
 		flag = 1;
@@ -427,17 +429,26 @@ static void __cons_ctx(struct simplex_ctx *ctx, int c[64+1], int type, int neg, 
 	if(neg == 0)	{
 		if(type == P_LE) {
 			for(j = 0; j < ctx->n; j++)
-				ctx->t[*m][j] = Qint(c[j]);
+			{
+				int id = XINT(ctx->nl[j]);
+				ctx->t[*m][j] = Qint(c[id]);
+			}
 			ctx->bv[*m] = Qint(-c[64]);
 			(*m)++;
 		}
 		if(type == P_EQU) {
 			for(j = 0; j < ctx->n; j++)
-				ctx->t[*m][j] = Qint(c[j]);
+			{
+				int id = XINT(ctx->nl[j]);
+				ctx->t[*m][j] = Qint(c[id]);
+			}
 			ctx->bv[*m] = Qint(-c[64]);
 			(*m)++;
 			for(j = 0; j < ctx->n; j++)
-				ctx->t[*m][j] = Qint(-c[j]);
+			{
+				int id = XINT(ctx->nl[j]);
+				ctx->t[*m][j] = Qint(-c[id]);
+			}
 			ctx->bv[*m] = Qint(c[64]);
 			(*m)++;
 		}
@@ -445,32 +456,38 @@ static void __cons_ctx(struct simplex_ctx *ctx, int c[64+1], int type, int neg, 
 		if(type == P_LE)
 		{
 			for(j = 0; j < ctx->n; j++)
-				ctx->t[*m][j] = Qint(-c[j]);
+			{
+				int id = XINT(ctx->nl[j]);
+				ctx->t[*m][j] = Qint(-c[id]);
+			}
 			ctx->bv[*m] = Qint(c[64]-1);
 			(*m)++;
 		}
 	}
 }
 
-static void cons_ctx_purify(struct simplex_ctx *ctx, int fid, int flag, int *m)
+static void cons_ctx_purify(struct simplex_ctx *ctx, int fid, int neg, int *m, int flag)
 {
 	int i;
 	struct func f;
 	struct func_info fi;
 	int c[64+1];
 	func_get(&f, &fi, fid);
-	if((strcmp(fi.name,"+") == 0 || strcmp(fi.name, ".") == 0) && flag)
+	if(strcmp(fi.name,"+") == 0 || strcmp(fi.name, ".") == 0)
 	{
-		memset(c, 0, sizeof(c));
-		cons_single(fid, ctx->varmap, c, 1);
-		c[ctx->varmap[fid]] -= 1;
-		__cons_ctx(ctx, c, P_EQU, 0, m);
-		flag = 0;
+		if(flag)
+		{
+			memset(c, 0, sizeof(c));
+			cons_single(fid, ctx->varmap, c, 1);
+			c[ctx->varmap[fid]] -= 1;
+			__cons_ctx(ctx, c, P_EQU, 0, m);
+			flag = 0;
+		}
 	}
 	else 
 		flag = 1;
 	for(i = 0; i < fi.n; i++)
-		cons_ctx_purify(ctx, f.arr[i], flag, m);
+		cons_ctx_purify(ctx, f.arr[i], neg, m, flag);
 }
 
 static void cons_ctx(
@@ -492,8 +509,8 @@ static void cons_ctx(
 			cons_single(p.lv, ctx->varmap, c, 1);
 			cons_single(p.rv, ctx->varmap, c, -1);
 			__cons_ctx(ctx, c, p.type, ls->mem[i].neg, &m);
-			cons_ctx_purify(ctx, p.lv, ls->mem[i].neg, &m);
-			cons_ctx_purify(ctx, p.rv, ls->mem[i].neg, &m);
+			cons_ctx_purify(ctx, p.lv, ls->mem[i].neg, &m, ls->mem[i].neg);
+			cons_ctx_purify(ctx, p.rv, ls->mem[i].neg, &m, ls->mem[i].neg);
 		}
 	}
 }
@@ -602,7 +619,7 @@ static int push_eqs(struct theory_tree *tt)
 			tt->lt = theory_tree_new(ctx1, ectx1);
 			for(k = 0; k < ctx1->n; k++)
 				ctx1->t[ctx->m][k] = Qint(0);
-			ctx1->t[ctx->m][ctx->nl[j]] = Qint(1);
+			ctx1->t[ctx->m][j] = Qint(1);
 			ctx1->bl[ctx->m] = XINT_SR(ctx->m);
 			ctx1->bv[ctx->m] = Qint(avj - 1);
 			if(arith_test(tt->lt) == 0)
@@ -617,7 +634,7 @@ static int push_eqs(struct theory_tree *tt)
 			tt->gt = theory_tree_new(ctx1, ectx1);
 			for(k = 0; k < ctx1->n; k++)
 				ctx1->t[ctx->m][k] = Qint(0);
-			ctx1->t[ctx->m][ctx->nl[j]] = Qint(-1);
+			ctx1->t[ctx->m][j] = Qint(-1);
 			ctx1->bl[ctx->m] = XINT_SR(ctx->m);
 			ctx1->bv[ctx->m] = Qint(-(avj + 1));
 			if(arith_test(tt->gt) == 0)
@@ -649,27 +666,36 @@ static void pull_eqs(struct theory_tree *tt)
 			v = equal_get_father(ectx, k);
 			if(k != v)
 			{
+				int idk;
+				for(idk = 0; idk < 64; idk++)
+					if(ctx->nl[idk] == ctx->varmap[k])
+						break;
+				assert(idk < 64);
 				if(ctx->varmap[v] != -1)
 				{
-					fprintf(stderr, "rewrite x%d",ctx->varmap[k]);
-					func_print(k, stderr);
-					fprintf(stderr, " using x%d", ctx->varmap[v]);
-					func_print(v, stderr);
+					int idv;
+					for(idv = 0; idv < 64; idv++)
+						if(ctx->nl[idv] == ctx->varmap[v])
+							break;
+					assert(idv < 64);
+					fprintf(stderr, "rewrite x%d/",ctx->varmap[k]);
+					func_print_pure(k, stderr);
+					fprintf(stderr, " using x%d/", ctx->varmap[v]);
+					func_print_pure(v, stderr);
 					fprintf(stderr, "\n");
 					for(i = 0; i < ctx->m; i++)
 					{
-						ctx->t[i][ctx->varmap[v]] =
-							Qadd(ctx->t[i][ctx->varmap[v]],
-							     ctx->t[i][ctx->varmap[k]]);
-						ctx->t[i][ctx->varmap[k]] = Qint(0);
+						ctx->t[i][idv] =
+							Qadd(ctx->t[i][idv], ctx->t[i][idk]);
+						ctx->t[i][idk] = Qint(0);
 					}
 				}
 				else
 				{
-					fprintf(stderr, "replace x%d",ctx->varmap[k]);
-					func_print(k, stderr);
+					fprintf(stderr, "replace x%d/",ctx->varmap[k]);
+					func_print_pure(k, stderr);
 					fprintf(stderr, " using ");
-					func_print(v, stderr);
+					func_print_pure(v, stderr);
 					fprintf(stderr, "\n");
 					func_get(&f, &fi, v);
 					if(fi.name[0] != '@')
@@ -682,9 +708,10 @@ static void pull_eqs(struct theory_tree *tt)
 						int c = atoi(fi.name+1);
 						for(i = 0; i < ctx->m; i++)
 						{
-							ctx->bv[i] = Qsub(ctx->bv[i],
-									  Qmul(ctx->t[i][ctx->varmap[k]], Qint(c)));
-							ctx->t[i][ctx->varmap[k]] = Qint(0);
+							int mid = XINT(ctx->bl[i]);
+							ctx->bv[mid] = Qsub(ctx->bv[mid],
+									    Qmul(ctx->t[i][idk], Qint(c)));
+							ctx->t[i][idk] = Qint(0);
 						}
 					}
 				}
@@ -705,7 +732,7 @@ struct simplex_ctx *arith_build_env(LitSet *env)
 	for(i = 0; i < 64; i++)
 		if(varmap[i] != -1) {
 			fprintf(stderr, "x%d=", varmap[i]);
-			func_print(i, stderr);
+			func_print_pure(i, stderr);
 			fprintf(stderr, "\n");
 		}
 	ctx = simplex_new_ctx(n, m);

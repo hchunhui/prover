@@ -49,6 +49,32 @@ void func_print(int id, FILE *fp)
 	fprintf(fp, ")");
 }
 
+void func_print_pure(int id, FILE *fp)
+{
+	int fid;
+	fid = func_tab[id].type;
+	if(func_info_tab[fid].name[0] == '+')
+		fprintf(fp, "p");
+	else if(func_info_tab[fid].name[0] == '.')
+		fprintf(fp, "m");
+	else if(func_info_tab[fid].name[0] != '@')
+		fprintf(fp, "_%s", func_info_tab[fid].name);
+	else
+		fprintf(fp, "_%s", func_info_tab[fid].name+1);
+	switch(func_info_tab[fid].n)
+	{
+	case 0:
+		break;
+	case 1:
+		func_print_pure(func_tab[id].arr[0], fp);
+		break;
+	case 2:
+		func_print_pure(func_tab[id].arr[0], fp);
+		func_print_pure(func_tab[id].arr[1], fp);
+		break;
+	}
+}
+
 int func_search(int type, int arg1, int arg2)
 {
 	int i;
