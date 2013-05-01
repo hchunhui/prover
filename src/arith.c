@@ -279,19 +279,19 @@ int simplex_solve(struct simplex_ctx *ctx)
 			  continue;
 			if(XINT_O(ctx->nl[j]))
 			{
-				ctx->av[j] = Qsub(get_basic(ctx, i), diff);
+				ctx->av[j] = Qsub(sum, diff);
 				break;
 			}
 			temp = XINT(ctx->nl[j]);
 			if(Qsign(ctx->t[i][j]) > 0)
 			{
-				ctx->av[j] = Qsub(ctx->av[j], diff);
+				ctx->av[j] = Qsub(sum, diff);
 				break;
 			}
 			theta = Qsub(ctx->bv[temp], ctx->av[j]);
-			if(Qsign(Qsub(Qmul(ctx->t[i][j], theta), diff)) >= 0)
+			if(Qsign(Qadd(Qmul(ctx->t[i][j], theta), diff)) <= 0)
 			{
-				ctx->av[j] = Qsub(ctx->av[j], diff);
+				ctx->av[j] = Qsub(sum, diff);
 				break;
 			}
 		}
@@ -668,14 +668,14 @@ static void pull_eqs(struct theory_tree *tt)
 			{
 				int idk;
 				for(idk = 0; idk < 64; idk++)
-					if(ctx->nl[idk] == ctx->varmap[k])
+					if(XINT(ctx->nl[idk]) == ctx->varmap[k])
 						break;
 				assert(idk < 64);
 				if(ctx->varmap[v] != -1)
 				{
 					int idv;
 					for(idv = 0; idv < 64; idv++)
-						if(ctx->nl[idv] == ctx->varmap[v])
+						if(XINT(ctx->nl[idv]) == ctx->varmap[v])
 							break;
 					assert(idv < 64);
 					fprintf(stderr, "rewrite x%d/",ctx->varmap[k]);
