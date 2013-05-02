@@ -565,7 +565,7 @@ static int push_eqs(struct theory_tree *tt)
 				lb[j] = 1;
 		}
 	}
-	for(j = 0; j < ctx->n; j++)
+	for(j = ctx->n-1; j >= 0; j--)
 	{
 		if(ub[j] && lb[j])
 		{
