@@ -70,3 +70,9 @@ intros.
 apply NNPP.
 tauto.
 Qed.
+
+Lemma ar_tri:forall x a:Z, ~x<a->~x=a->~~x>a.
+intros.
+omega.
+Qed.
+

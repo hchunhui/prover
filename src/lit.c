@@ -87,3 +87,76 @@ void litset_print(LitSet *ls, int start, char *sep, FILE *fp)
 		}
 	}
 }
+
+LitList *litlist_new()
+{
+	LitList *ls;
+	ls = malloc(sizeof(LitList));
+	assert(ls);
+	ls->mem = malloc(sizeof(Lit));
+	assert(ls->mem);
+	ls->alloc_n = 1;
+	ls->n = 0;
+	return ls;
+}
+
+void litlist_add(LitList *ls, Lit l)
+{
+	if(ls->n == ls->alloc_n)
+	{
+		ls->alloc_n *= 2;
+		ls->mem = realloc(ls->mem, sizeof(Lit)*ls->alloc_n);
+		assert(ls->mem);
+	}
+	ls->mem[ls->n] = l;
+	ls->n++;
+}
+
+LitList *litlist_dup(LitList *ls)
+{
+	LitList *ls1;
+	ls1 = malloc(sizeof(LitList));
+	assert(ls1);
+	ls1->n = ls->n;
+	ls1->alloc_n = ls->alloc_n;
+	ls1->mem = malloc(sizeof(Lit)*ls1->alloc_n);
+	assert(ls1->mem);
+	memcpy(ls1->mem, ls->mem, sizeof(Lit)*ls1->alloc_n);
+	return ls1;
+}
+
+LitList *litlist_dupset(LitSet *ls)
+{
+	LitList *ls1;
+	ls1 = malloc(sizeof(LitList));
+	assert(ls1);
+	ls1->n = ls->n;
+	ls1->alloc_n = ls->alloc_n;
+	ls1->mem = malloc(sizeof(Lit)*ls1->alloc_n);
+	assert(ls1->mem);
+	memcpy(ls1->mem, ls->mem, sizeof(Lit)*ls1->alloc_n);
+	return ls1;
+}
+
+void litlist_del(LitList *ls)
+{
+	free(ls->mem);
+	free(ls);
+}
+
+
+void litlist_print(LitList *ls, int start, char *sep, FILE *fp)
+{
+	int i;
+	if(ls->n == start)
+		fprintf(fp, "False");
+	else
+	{
+		lit_print(ls->mem[start], fp);
+		for(i = start+1; i < ls->n; i++)
+		{
+			fprintf(fp, sep);
+			lit_print(ls->mem[i], fp);
+		}
+	}
+}

@@ -13,6 +13,8 @@ enum {
 	P_ATOM,
 	P_EQU,
 	P_LE,
+	P_LT,
+	P_GT,
 };
 
 int prop_new(int i);

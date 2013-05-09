@@ -70,6 +70,13 @@ void prop_print(int id, FILE *fp)
 		goto comm;
 	case P_LE:
 		pred = "<=";
+		goto comm;
+	case P_LT:
+		pred = "<";
+		goto comm;
+	case P_GT:
+		pred = ">";
+		goto comm;
 	comm:
 		fprintf(fp, "(");
 		func_print(pred_tab[id].lv, fp);

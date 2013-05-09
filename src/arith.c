@@ -573,6 +573,7 @@ static int push_eqs(struct theory_tree *tt)
 			int idx, idy;
 			int k;
 			int avj;
+			LitList *ll;
 
 			fprintf(stderr, "x%d is bound\n", XINT(ctx->nl[j]));
 			avj = ctx->av[j].p;
@@ -606,7 +607,9 @@ static int push_eqs(struct theory_tree *tt)
 				fprintf(stderr, "xi=bi sat\n");
 				continue;
 			}
-			tt->eq = theory_tree_new(ctx1, ectx1);
+			ll = litlist_dup(tt->env);
+			litlist_add(ll, lit_make(0, pred_new(P_EQU, idx, idy)));
+			tt->eq = theory_tree_new(ctx1, ectx1, ll);
 			if(equal_test(tt->eq) == 0)
 			{
 				fprintf(stderr, "xi=bi sat\n");
@@ -616,7 +619,9 @@ static int push_eqs(struct theory_tree *tt)
 			fprintf(stderr, "===xi<bi===\n");
 			ctx1 = simplex_dup_ctx(ctx, 1);
 			ectx1 = equal_dup_ctx(ectx);
-			tt->lt = theory_tree_new(ctx1, ectx1);
+			ll = litlist_dup(tt->env);
+			litlist_add(ll, lit_make(0, pred_new(P_LT, idx, idy)));
+			tt->lt = theory_tree_new(ctx1, ectx1, ll);
 			for(k = 0; k < ctx1->n; k++)
 				ctx1->t[ctx->m][k] = Qint(0);
 			ctx1->t[ctx->m][j] = Qint(1);
@@ -631,7 +636,9 @@ static int push_eqs(struct theory_tree *tt)
 			fprintf(stderr, "===xi>bi===\n");
 			ctx1 = simplex_dup_ctx(ctx, 1);
 			ectx1 = equal_dup_ctx(ectx);
-			tt->gt = theory_tree_new(ctx1, ectx1);
+			ll = litlist_dup(tt->env);
+			litlist_add(ll, lit_make(0, pred_new(P_GT, idx, idy)));
+			tt->gt = theory_tree_new(ctx1, ectx1, ll);
 			for(k = 0; k < ctx1->n; k++)
 				ctx1->t[ctx->m][k] = Qint(0);
 			ctx1->t[ctx->m][j] = Qint(-1);

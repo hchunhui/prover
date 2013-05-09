@@ -50,7 +50,8 @@ static int add_clause(LitSet *env)
 	LitSet *ls;
 	struct theory_tree *tt;
 	tt = theory_tree_new(arith_build_env(env),
-			     equal_build_env(env));
+			     equal_build_env(env),
+			     litlist_dupset(env));
 	ret = equal_test(tt);
 	if(ret == 1)
 	{
@@ -58,6 +59,7 @@ static int add_clause(LitSet *env)
 		for(i = 0; i < env->n; i++)
 			litset_add(ls, lit_make(!env->mem[i].neg, env->mem[i].id));
 		id = gamma_add(ls);
+		gamma_add_proof(id, trick_proof, tt);
 	}
 	return ret;
 }

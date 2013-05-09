@@ -3,6 +3,7 @@
 #include "comm.h"
 #include "gamma.h"
 #include "proof.h"
+#include "theory.h"
 
 #define MAX 1024
 
