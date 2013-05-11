@@ -12,7 +12,7 @@ static void emit_tactic()
 	fprintf(pout,
 		"clear L0.\n"
 		"congruence || omega ||"
-		"(intros;subst;simpl in *;omega).\nQed.\n");
+		"(unfold not;intros;mysubst;simpl in *;omega).\nQed.\n");
 }
 
 static void emit_tri(int seq, int ids[], int hlen, int tf)

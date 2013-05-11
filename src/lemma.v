@@ -76,3 +76,7 @@ intros.
 omega.
 Qed.
 
+Ltac mysubst :=
+  repeat (match goal with
+            [ H : ?X = ?Y |- _ ] => subst X || subst Y
+          end).
