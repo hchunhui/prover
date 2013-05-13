@@ -515,14 +515,15 @@ static void cons_ctx(
 	}
 }
 
-static int push_eqs_tri(struct theory_tree *tt, int j, int avj, int idx, int idy)
+static int push_eqs_tri(struct theory_tree *tt,
+			struct simplex_ctx *ctx_eq,
+			struct simplex_ctx *ctx_lt,
+			struct simplex_ctx *ctx_gt,
+			int idx, int idy)
 {
 	struct equal_ctx *ectx1;
-	struct simplex_ctx *ctx1;
-	int k;
 	LitList *ll;
 
-	ctx1 = simplex_dup_ctx(tt->actx, 0);
 	ectx1 = equal_dup_ctx(tt->ectx);
 	if(equal_add_eq(ectx1, idx, idy) == 0)
 	{
@@ -531,7 +532,7 @@ static int push_eqs_tri(struct theory_tree *tt, int j, int avj, int idx, int idy
 	}
 	ll = litlist_dup(tt->env);
 	litlist_add(ll, lit_make(0, pred_new(P_EQU, idx, idy)));
-	tt->eq = theory_tree_new(ctx1, ectx1, ll);
+	tt->eq = theory_tree_new(ctx_eq, ectx1, ll);
 	if(equal_test(tt->eq) == 0)
 	{
 		fprintf(stderr, "xi=bi sat\n");
@@ -539,18 +540,13 @@ static int push_eqs_tri(struct theory_tree *tt, int j, int avj, int idx, int idy
 		/* theory_tree_del */
 		goto clean_up;
 	}
+
 	/* case2: xi<=bi-1 */
 	fprintf(stderr, "===xi<bi===\n");
-	ctx1 = simplex_dup_ctx(tt->actx, 1);
 	ectx1 = equal_dup_ctx(tt->ectx);
 	ll = litlist_dup(tt->env);
 	litlist_add(ll, lit_make(0, pred_new(P_LT, idx, idy)));
-	tt->lt = theory_tree_new(ctx1, ectx1, ll);
-	for(k = 0; k < ctx1->n; k++)
-		ctx1->t[tt->actx->m][k] = Qint(0);
-	ctx1->t[tt->actx->m][j] = Qint(1);
-	ctx1->bl[tt->actx->m] = XINT_SR(tt->actx->m);
-	ctx1->bv[tt->actx->m] = Qint(avj - 1);
+	tt->lt = theory_tree_new(ctx_lt, ectx1, ll);
 	if(arith_test(tt->lt) == 0)
 	{
 		fprintf(stderr, "xi<bi sat\n");
@@ -558,18 +554,13 @@ static int push_eqs_tri(struct theory_tree *tt, int j, int avj, int idx, int idy
 		/* theory_tree_del */
 		goto clean_up;
 	}
+
 	/* case3: -xi <= -bi-1 */
 	fprintf(stderr, "===xi>bi===\n");
-	ctx1 = simplex_dup_ctx(tt->actx, 1);
 	ectx1 = equal_dup_ctx(tt->ectx);
 	ll = litlist_dup(tt->env);
 	litlist_add(ll, lit_make(0, pred_new(P_GT, idx, idy)));
-	tt->gt = theory_tree_new(ctx1, ectx1, ll);
-	for(k = 0; k < ctx1->n; k++)
-		ctx1->t[tt->actx->m][k] = Qint(0);
-	ctx1->t[tt->actx->m][j] = Qint(-1);
-	ctx1->bl[tt->actx->m] = XINT_SR(tt->actx->m);
-	ctx1->bv[tt->actx->m] = Qint(-(avj + 1));
+	tt->gt = theory_tree_new(ctx_gt, ectx1, ll);
 	if(arith_test(tt->gt) == 0)
 	{
 		litlist_del(ll);
@@ -580,7 +571,6 @@ static int push_eqs_tri(struct theory_tree *tt, int j, int avj, int idx, int idy
 	return 1;
 clean_up:
 	equal_del_ctx(ectx1);
-	simplex_del_ctx(ctx1);
 	return 0;
 }
 
@@ -589,6 +579,8 @@ static int push_eqs(struct theory_tree *tt)
 	int i, j;
 	int ub[tt->actx->n], lb[tt->actx->n];
 	struct simplex_ctx *ctx = tt->actx;
+	struct simplex_ctx *ctx_eq, *ctx_lt, *ctx_gt;
+
 	for(j = 0; j < ctx->n; j++)
 		ub[j] = 0;
 	for(j = 0; j < ctx->n; j++)
@@ -637,6 +629,7 @@ static int push_eqs(struct theory_tree *tt)
 		{
 			char num[16];
 			int idx, idy;
+			int k;
 			int avj;
 
 			fprintf(stderr, "x%d is bound\n", XINT(ctx->nl[j]));
@@ -661,8 +654,28 @@ static int push_eqs(struct theory_tree *tt)
 			assert(idx < 64);
 			sprintf(num, "@%d", avj);
 			idy = func_new(func_info_new(num, 0), -1, -1);
-			if(push_eqs_tri(tt, j, avj, idx, idy))
+
+			ctx_eq = simplex_dup_ctx(ctx, 0);
+			ctx_lt = simplex_dup_ctx(ctx, 1);
+			for(k = 0; k < ctx_lt->n; k++)
+				ctx_lt->t[ctx->m][k] = Qint(0);
+			ctx_lt->t[ctx->m][j] = Qint(1);
+			ctx_lt->bl[ctx->m] = XINT_SR(ctx->m);
+			ctx_lt->bv[ctx->m] = Qint(avj - 1);
+
+			ctx_gt = simplex_dup_ctx(ctx, 1);
+			for(k = 0; k < ctx_gt->n; k++)
+				ctx_gt->t[ctx->m][k] = Qint(0);
+			ctx_gt->t[ctx->m][j] = Qint(-1);
+			ctx_gt->bl[ctx->m] = XINT_SR(ctx->m);
+			ctx_gt->bv[ctx->m] = Qint(-(avj + 1));
+
+			if(push_eqs_tri(tt, ctx_eq, ctx_lt, ctx_gt, idx, idy))
 				return 1;
+
+			simplex_del_ctx(ctx_eq);
+			simplex_del_ctx(ctx_lt);
+			simplex_del_ctx(ctx_gt);
 		}
 	}
 	fprintf(stderr, "bound check fail\n");
